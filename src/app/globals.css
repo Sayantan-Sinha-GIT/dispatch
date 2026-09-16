@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0d12;
+  --surface: #12161d;
+  --surface-raised: #181d26;
+  --border: #262d38;
+  --text: #e8ecf1;
+  --text-dim: #8b96a5;
+  --amber: #ffb020;
+  --amber-dim: #7a5416;
+  --cyan: #2dd4c4;
+  --danger: #ff5470;
+  --success: #3ddc97;
+
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-amber: var(--amber);
+  --color-amber-dim: var(--amber-dim);
+  --color-cyan: var(--cyan);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+::selection {
+  background: var(--amber);
+  color: #0a0d12;
+}
+
+.leaflet-container {
+  background: var(--surface) !important;
+  font-family: var(--font-body) !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface-raised) !important;
+  color: var(--text) !important;
+}
+
