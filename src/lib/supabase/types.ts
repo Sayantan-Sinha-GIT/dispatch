@@ -128,25 +128,34 @@ export type Database = {
         Row: {
           capacity: number
           created_at: string
+          current_lat: number | null
+          current_lng: number | null
           depot_lat: number
           depot_lng: number
           id: string
+          location_updated_at: string | null
           profile_id: string
         }
         Insert: {
           capacity?: number
           created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
           depot_lat: number
           depot_lng: number
           id?: string
+          location_updated_at?: string | null
           profile_id: string
         }
         Update: {
           capacity?: number
           created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
           depot_lat?: number
           depot_lng?: number
           id?: string
+          location_updated_at?: string | null
           profile_id?: string
         }
         Relationships: [
@@ -166,6 +175,10 @@ export type Database = {
     Functions: {
       current_rider_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      update_my_location: {
+        Args: { lat: number; lng: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

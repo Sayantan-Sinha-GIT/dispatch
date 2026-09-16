@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+export default function RiderLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,22 +36,22 @@ export default function LoginPage() {
       .eq("id", data.user.id)
       .single();
 
-    if (profile?.role !== "admin") {
+    if (profile?.role !== "rider") {
       await supabase.auth.signOut();
-      setError("This is the admin login. Riders should sign in at the rider portal below.");
+      setError("This is the rider portal. Admins should use the admin login.");
       setLoading(false);
       return;
     }
 
-    router.push("/admin");
+    router.push("/rider");
     router.refresh();
   }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
       <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-amber/20 blur-[120px]" />
-        <div className="absolute -right-24 bottom-1/4 h-96 w-96 rounded-full bg-cyan/10 blur-[120px]" />
+        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-cyan/20 blur-[120px]" />
+        <div className="absolute -right-24 bottom-1/4 h-96 w-96 rounded-full bg-amber/10 blur-[120px]" />
       </div>
 
       <motion.div
@@ -61,12 +61,12 @@ export default function LoginPage() {
         className="relative w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl shadow-black/40"
       >
         <div className="mb-8 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber text-bg font-display font-bold">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan text-bg font-display font-bold">
             D
           </span>
           <div>
             <h1 className="font-display text-lg font-semibold leading-none">Dispatch</h1>
-            <p className="text-xs text-text-dim">Admin console</p>
+            <p className="text-xs text-text-dim">Rider portal</p>
           </div>
         </div>
 
@@ -80,8 +80,8 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-amber"
-              placeholder="you@dispatch.io"
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-cyan"
+              placeholder="you@example.com"
             />
           </div>
           <div>
@@ -93,7 +93,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-amber"
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-cyan"
               placeholder="••••••••"
             />
           </div>
@@ -112,16 +112,22 @@ export default function LoginPage() {
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-amber py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-lg bg-cyan py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "Signing in…" : "Sign in"}
           </motion.button>
         </form>
 
         <p className="mt-5 text-center text-xs text-text-dim">
-          Delivering today?{" "}
-          <Link href="/rider/login" className="text-cyan hover:underline">
-            Rider portal
+          New rider?{" "}
+          <Link href="/rider/signup" className="text-cyan hover:underline">
+            Sign up
+          </Link>
+        </p>
+        <p className="mt-1 text-center text-xs text-text-dim">
+          Dispatcher?{" "}
+          <Link href="/login" className="text-amber hover:underline">
+            Admin login
           </Link>
         </p>
       </motion.div>

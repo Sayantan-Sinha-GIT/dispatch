@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { StatCounter } from "@/components/StatCounter";
 import { RouteMapClient } from "@/components/RouteMapClient";
+import { ROUTE_COLORS } from "@/lib/routeColors";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -22,8 +23,14 @@ export default function AdminDashboard() {
   const [rawText, setRawText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
-  const [newRider, setNewRider] = useState({ name: "", capacity: 10, depotLat: "", depotLng: "" });
   const [message, setMessage] = useState<string | null>(null);
+  const [focusRiderId, setFocusRiderId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = useCallback(async () => {
     const [ordersRes, ridersRes, runsRes] = await Promise.all([
@@ -43,6 +50,7 @@ export default function AdminDashboard() {
     const channel = supabase
       .channel("admin-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "riders" }, () => loadData())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -76,38 +84,6 @@ export default function AdminDashboard() {
       setMessage(err instanceof Error ? err.message : "Failed to parse orders");
     } finally {
       setParsing(false);
-    }
-  }
-
-  async function handleAddRider(e: React.FormEvent) {
-    e.preventDefault();
-    setMessage(null);
-    // For a real signup flow a rider profile would be created via auth; for this
-    // demo the admin links a rider row to a pre-seeded profile id by name lookup.
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("name", newRider.name)
-      .eq("role", "rider")
-      .single();
-
-    if (!profile) {
-      setMessage(`No rider profile named "${newRider.name}" found. Seed the account first.`);
-      return;
-    }
-
-    const { error } = await supabase.from("riders").insert({
-      profile_id: profile.id,
-      capacity: newRider.capacity,
-      depot_lat: parseFloat(newRider.depotLat),
-      depot_lng: parseFloat(newRider.depotLng),
-    });
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage(`Rider ${newRider.name} added.`);
-      setNewRider({ name: "", capacity: 10, depotLat: "", depotLng: "" });
-      loadData();
     }
   }
 
@@ -207,42 +183,46 @@ export default function AdminDashboard() {
           </section>
 
           <section className="rounded-xl border border-border bg-surface p-4">
-            <h2 className="mb-3 font-display text-sm font-semibold">Add rider</h2>
-            <form onSubmit={handleAddRider} className="space-y-2.5">
-              <input
-                placeholder="Rider name (must match a seeded profile)"
-                value={newRider.name}
-                onChange={(e) => setNewRider((s) => ({ ...s, name: e.target.value }))}
-                className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  placeholder="Capacity"
-                  value={newRider.capacity}
-                  onChange={(e) => setNewRider((s) => ({ ...s, capacity: Number(e.target.value) }))}
-                  className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
-                />
-                <input
-                  placeholder="Depot lat"
-                  value={newRider.depotLat}
-                  onChange={(e) => setNewRider((s) => ({ ...s, depotLat: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
-                />
-                <input
-                  placeholder="Depot lng"
-                  value={newRider.depotLng}
-                  onChange={(e) => setNewRider((s) => ({ ...s, depotLng: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full rounded-lg border border-border py-2 text-sm font-semibold transition-colors hover:border-amber/50"
-              >
-                Add rider
-              </button>
-            </form>
+            <h2 className="mb-1 font-display text-sm font-semibold">Riders ({riders.length})</h2>
+            <p className="mb-3 text-xs text-text-dim">
+              Riders create their own accounts from the{" "}
+              <a href="/rider/signup" target="_blank" rel="noreferrer" className="text-cyan hover:underline">
+                rider portal
+              </a>
+              . Click one to locate them on the map.
+            </p>
+            <div className="space-y-1.5">
+              {riders.map((rider, idx) => {
+                const isLive =
+                  rider.location_updated_at &&
+                  now - new Date(rider.location_updated_at).getTime() < 2 * 60 * 1000;
+                return (
+                  <button
+                    key={rider.id}
+                    onClick={() => setFocusRiderId(rider.id)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                      focusRiderId === rider.id
+                        ? "border-cyan/60 bg-cyan/10"
+                        : "border-border bg-surface-raised hover:border-cyan/30"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: ROUTE_COLORS[idx % ROUTE_COLORS.length] }}
+                      />
+                      {rider.profiles?.name ?? "Rider"}
+                    </span>
+                    <span className={`text-[10px] uppercase ${isLive ? "text-success" : "text-text-dim"}`}>
+                      {isLive ? "live" : "offline"}
+                    </span>
+                  </button>
+                );
+              })}
+              {riders.length === 0 && (
+                <p className="py-4 text-center text-xs text-text-dim">No riders yet.</p>
+              )}
+            </div>
           </section>
 
           <button
@@ -301,7 +281,11 @@ export default function AdminDashboard() {
               depot_lat: r.depot_lat,
               depot_lng: r.depot_lng,
               name: r.profiles?.name ?? "Rider",
+              current_lat: r.current_lat,
+              current_lng: r.current_lng,
             }))}
+            focusRiderId={focusRiderId}
+            showLocateMe
           />
         </section>
       </main>

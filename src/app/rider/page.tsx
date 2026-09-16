@@ -53,9 +53,29 @@ export default function RiderDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadData]);
 
+  useEffect(() => {
+    if (!rider || !("geolocation" in navigator)) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        supabase.rpc("update_my_location", {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      () => {
+        // permission denied or unavailable — live tracking just stays off
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rider?.id]);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/rider/login");
     router.refresh();
   }
 
@@ -94,7 +114,17 @@ export default function RiderDashboard() {
               assigned_rider_id: o.assigned_rider_id,
               sequence_in_route: o.sequence_in_route,
             }))}
-            riders={[{ id: rider.id, depot_lat: rider.depot_lat, depot_lng: rider.depot_lng, name }]}
+            riders={[
+              {
+                id: rider.id,
+                depot_lat: rider.depot_lat,
+                depot_lng: rider.depot_lng,
+                name,
+                current_lat: rider.current_lat,
+                current_lng: rider.current_lng,
+              },
+            ]}
+            showLocateMe
           />
         )}
       </div>

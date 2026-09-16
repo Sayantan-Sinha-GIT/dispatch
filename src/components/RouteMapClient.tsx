@@ -12,6 +12,11 @@ const RouteMap = dynamic(() => import("./RouteMap").then((m) => m.RouteMap), {
   ),
 });
 
-export function RouteMapClient(props: { orders: MapOrder[]; riders: MapRider[] }) {
+export function RouteMapClient(props: {
+  orders: MapOrder[];
+  riders: MapRider[];
+  focusRiderId?: string | null;
+  showLocateMe?: boolean;
+}) {
   return <RouteMap {...props} />;
 }

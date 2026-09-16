@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // API routes handle their own auth/authorization server-side (they need
+  // to be reachable while signed out, e.g. rider signup) — don't gate them here.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -28,16 +34,17 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuthRoute = path.startsWith("/login") || path.startsWith("/signup");
+  const isAuthRoute =
+    path.startsWith("/login") || path === "/rider/login" || path === "/rider/signup";
   const isPublic = isAuthRoute || path === "/";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = path.startsWith("/rider") ? "/rider/login" : "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && (path.startsWith("/admin") || path.startsWith("/rider"))) {
+  if (user && !isAuthRoute && (path.startsWith("/admin") || path.startsWith("/rider"))) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
