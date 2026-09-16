@@ -6,12 +6,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { StatCounter } from "@/components/StatCounter";
 import { RouteMapClient } from "@/components/RouteMapClient";
+import { NotificationBell } from "@/components/NotificationBell";
+import { useSweepPolling } from "@/lib/useSweepPolling";
 import { ROUTE_COLORS } from "@/lib/routeColors";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
 type Rider = Tables<"riders"> & { profiles?: { name: string } | null };
 type OptimizationRun = Tables<"optimization_runs">;
+type Notification = Tables<"notifications">;
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -20,12 +23,16 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [riders, setRiders] = useState<Rider[]>([]);
   const [lastRun, setLastRun] = useState<OptimizationRun | null>(null);
+  const [activity, setActivity] = useState<Notification[]>([]);
   const [rawText, setRawText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [focusRiderId, setFocusRiderId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [profileId, setProfileId] = useState<string | null>(null);
+
+  useSweepPolling();
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 15000);
@@ -33,14 +40,28 @@ export default function AdminDashboard() {
   }, []);
 
   const loadData = useCallback(async () => {
-    const [ordersRes, ridersRes, runsRes] = await Promise.all([
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) setProfileId(user.id);
+
+    const [ordersRes, ridersRes, runsRes, activityRes] = await Promise.all([
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("riders").select("*, profiles(name)"),
+      supabase.from("riders").select("*, profiles(name)").eq("status", "active"),
       supabase.from("optimization_runs").select("*").order("run_at", { ascending: false }).limit(1),
+      user
+        ? supabase
+            .from("notifications")
+            .select("*")
+            .eq("profile_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(8)
+        : Promise.resolve({ data: null }),
     ]);
     if (ordersRes.data) setOrders(ordersRes.data);
     if (ridersRes.data) setRiders(ridersRes.data as unknown as Rider[]);
     if (runsRes.data && runsRes.data.length > 0) setLastRun(runsRes.data[0]);
+    if (activityRes.data) setActivity(activityRes.data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -51,6 +72,7 @@ export default function AdminDashboard() {
       .channel("admin-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "riders" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => loadData())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -94,7 +116,7 @@ export default function AdminDashboard() {
       const res = await fetch("/api/optimize", { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMessage("Routes optimized.");
+      setMessage("Routes offered to riders — waiting on acceptance.");
       loadData();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Optimization failed");
@@ -104,53 +126,62 @@ export default function AdminDashboard() {
   }
 
   const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const offeredCount = orders.filter((o) => o.status === "offered").length;
+  const inProgressCount = orders.filter((o) => o.status === "assigned").length;
   const deliveredCount = orders.filter((o) => o.status === "delivered").length;
   const distanceSaved =
     lastRun && lastRun.total_distance_before > 0
-      ? ((lastRun.total_distance_before - lastRun.total_distance_after) /
-          lastRun.total_distance_before) *
-        100
+      ? ((lastRun.total_distance_before - lastRun.total_distance_after) / lastRun.total_distance_before) * 100
       : 0;
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber text-bg font-display font-bold text-sm">
-            D
-          </span>
-          <h1 className="font-display text-lg font-semibold">Dispatch Console</h1>
+      <header className="relative overflow-hidden border-b border-border bg-gradient-to-r from-surface via-surface to-amber/10 px-6 py-5">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber to-amber/60 font-display text-lg font-bold text-bg shadow-lg shadow-amber/20">
+              D
+            </span>
+            <div>
+              <h1 className="font-display text-xl font-semibold leading-tight">Dispatch Console</h1>
+              <p className="text-xs text-text-dim">Hyperlocal delivery command center</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {profileId && <NotificationBell profileId={profileId} accent="amber" />}
+            <button
+              onClick={handleSignOut}
+              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-dim transition-colors hover:border-amber/50 hover:text-text"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-dim transition-colors hover:border-amber/50 hover:text-text"
-        >
-          Sign out
-        </button>
+
+        <div className="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <KpiCard label="Pending" value={pendingCount} icon="📥" />
+          <KpiCard label="Awaiting accept" value={offeredCount} icon="⏳" accent="text-amber" />
+          <KpiCard label="In progress" value={inProgressCount} icon="🛵" accent="text-cyan" />
+          <KpiCard label="Delivered" value={deliveredCount} icon="✅" accent="text-success" />
+          <KpiCard label="Active riders" value={riders.length} icon="🟢" accent="text-success" />
+        </div>
       </header>
 
       <main className="grid grid-cols-1 gap-5 p-6 lg:grid-cols-[380px_1fr]">
         <div className="space-y-5">
-          <section className="grid grid-cols-3 gap-3">
-            <StatCard label="Pending" value={pendingCount} />
-            <StatCard label="Delivered" value={deliveredCount} />
-            <StatCard label="Riders" value={riders.length} />
-          </section>
-
           {lastRun && (
             <motion.section
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-border bg-surface p-4"
+              className="overflow-hidden rounded-2xl border border-cyan/20 bg-gradient-to-br from-cyan/10 via-surface to-surface p-4"
             >
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-dim">
-                Last optimization
-              </p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-dim">Last optimization</p>
               <div className="flex items-baseline gap-2">
                 <StatCounter
                   value={lastRun.total_distance_after}
                   suffix=" km"
-                  className="font-display text-2xl font-semibold text-cyan"
+                  className="font-display text-3xl font-bold text-cyan"
                 />
                 <span className="text-xs text-text-dim line-through">
                   {lastRun.total_distance_before.toFixed(1)} km
@@ -162,8 +193,10 @@ export default function AdminDashboard() {
             </motion.section>
           )}
 
-          <section className="rounded-xl border border-border bg-surface p-4">
-            <h2 className="mb-3 font-display text-sm font-semibold">Add orders</h2>
+          <section className="rounded-2xl border border-border bg-surface p-4">
+            <h2 className="mb-3 flex items-center gap-1.5 font-display text-sm font-semibold">
+              <span>✨</span> Add orders
+            </h2>
             <form onSubmit={handleParseOrders} className="space-y-3">
               <textarea
                 value={rawText}
@@ -175,63 +208,71 @@ export default function AdminDashboard() {
               <button
                 type="submit"
                 disabled={parsing}
-                className="w-full rounded-lg bg-amber py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-lg bg-gradient-to-r from-amber to-amber/80 py-2.5 text-sm font-semibold text-bg shadow-lg shadow-amber/20 transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {parsing ? "Parsing…" : "Parse with Gemini"}
               </button>
             </form>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4">
-            <h2 className="mb-1 font-display text-sm font-semibold">Riders ({riders.length})</h2>
+          <section className="rounded-2xl border border-border bg-surface p-4">
+            <h2 className="mb-1 flex items-center gap-1.5 font-display text-sm font-semibold">
+              <span>🟢</span> Active riders ({riders.length})
+            </h2>
             <p className="mb-3 text-xs text-text-dim">
               Riders create their own accounts from the{" "}
               <a href="/rider/signup" target="_blank" rel="noreferrer" className="text-cyan hover:underline">
                 rider portal
-              </a>
-              . Click one to locate them on the map.
+              </a>{" "}
+              and only appear here while online. Click one to locate them.
             </p>
             <div className="space-y-1.5">
               {riders.map((rider, idx) => {
                 const isLive =
-                  rider.location_updated_at &&
-                  now - new Date(rider.location_updated_at).getTime() < 2 * 60 * 1000;
+                  rider.location_updated_at && now - new Date(rider.location_updated_at).getTime() < 2 * 60 * 1000;
+                const isSuspended = !!rider.suspended_until && new Date(rider.suspended_until).getTime() > now;
                 return (
                   <button
                     key={rider.id}
                     onClick={() => setFocusRiderId(rider.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
                       focusRiderId === rider.id
                         ? "border-cyan/60 bg-cyan/10"
                         : "border-border bg-surface-raised hover:border-cyan/30"
                     }`}
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2.5">
                       <span
-                        className="h-2.5 w-2.5 rounded-full"
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-bg"
                         style={{ backgroundColor: ROUTE_COLORS[idx % ROUTE_COLORS.length] }}
-                      />
-                      {rider.profiles?.name ?? "Rider"}
+                      >
+                        {(rider.profiles?.name ?? "R").charAt(0).toUpperCase()}
+                      </span>
+                      <span>
+                        <span className="block">{rider.profiles?.name ?? "Rider"}</span>
+                        {isSuspended && <span className="block text-[10px] text-danger">suspended</span>}
+                      </span>
                     </span>
                     <span className={`text-[10px] uppercase ${isLive ? "text-success" : "text-text-dim"}`}>
-                      {isLive ? "live" : "offline"}
+                      {isLive ? "● live" : "offline"}
                     </span>
                   </button>
                 );
               })}
               {riders.length === 0 && (
-                <p className="py-4 text-center text-xs text-text-dim">No riders yet.</p>
+                <p className="py-4 text-center text-xs text-text-dim">No riders online right now.</p>
               )}
             </div>
           </section>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             onClick={handleOptimize}
             disabled={optimizing || riders.length === 0}
-            className="w-full rounded-lg bg-cyan py-3 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-xl bg-gradient-to-r from-cyan to-cyan/70 py-3.5 text-sm font-bold text-bg shadow-lg shadow-cyan/20 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {optimizing ? "Optimizing…" : "Optimize routes"}
-          </button>
+            {optimizing ? "Optimizing…" : "⚡ Optimize routes"}
+          </motion.button>
 
           <AnimatePresence>
             {message && (
@@ -246,7 +287,24 @@ export default function AdminDashboard() {
             )}
           </AnimatePresence>
 
-          <section className="rounded-xl border border-border bg-surface p-4">
+          <section className="rounded-2xl border border-border bg-surface p-4">
+            <h2 className="mb-3 flex items-center gap-1.5 font-display text-sm font-semibold">
+              <span>📜</span> Activity
+            </h2>
+            <div className="max-h-56 space-y-2 overflow-y-auto">
+              {activity.map((n) => (
+                <div key={n.id} className="rounded-lg bg-surface-raised px-3 py-2 text-xs">
+                  <p className="font-medium">{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-text-dim">{n.body}</p>}
+                </div>
+              ))}
+              {activity.length === 0 && (
+                <p className="py-4 text-center text-xs text-text-dim">No activity yet.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-surface p-4">
             <h2 className="mb-3 font-display text-sm font-semibold">Orders ({orders.length})</h2>
             <div className="max-h-80 space-y-1.5 overflow-y-auto">
               {orders.map((order) => (
@@ -265,7 +323,7 @@ export default function AdminDashboard() {
           </section>
         </div>
 
-        <section className="min-h-[500px] overflow-hidden rounded-xl border border-border lg:min-h-0">
+        <section className="min-h-[500px] overflow-hidden rounded-2xl border border-border shadow-2xl shadow-black/20 lg:min-h-0">
           <RouteMapClient
             orders={orders.map((o) => ({
               id: o.id,
@@ -293,11 +351,24 @@ export default function AdminDashboard() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function KpiCard({
+  label,
+  value,
+  icon,
+  accent = "text-text",
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  accent?: string;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-3">
-      <p className="text-xs text-text-dim">{label}</p>
-      <StatCounter value={value} decimals={0} className="font-display text-xl font-semibold" />
+    <div className="rounded-xl border border-border bg-surface-raised/70 p-3 backdrop-blur">
+      <div className="flex items-center justify-between">
+        <StatCounter value={value} decimals={0} className={`font-display text-xl font-bold ${accent}`} />
+        <span className="text-lg leading-none">{icon}</span>
+      </div>
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-text-dim">{label}</p>
     </div>
   );
 }
@@ -305,7 +376,8 @@ function StatCard({ label, value }: { label: string; value: number }) {
 function StatusPill({ status }: { status: string }) {
   const colors: Record<string, string> = {
     pending: "bg-text-dim/20 text-text-dim",
-    assigned: "bg-amber/20 text-amber",
+    offered: "bg-amber/20 text-amber",
+    assigned: "bg-cyan/20 text-cyan",
     delivered: "bg-success/20 text-success",
     failed: "bg-danger/20 text-danger",
   };

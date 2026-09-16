@@ -12,6 +12,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          profile_id: string
+          read: boolean
+          related_order_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          profile_id: string
+          read?: boolean
+          related_order_id?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string
+          read?: boolean
+          related_order_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_related_order_id_fkey"
+            columns: ["related_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       optimization_runs: {
         Row: {
           algorithm_used: string
@@ -49,12 +97,14 @@ export type Database = {
       }
       orders: {
         Row: {
+          accepted_at: string | null
           address: string
           assigned_rider_id: string | null
           created_at: string
           id: string
           lat: number
           lng: number
+          offered_at: string | null
           raw_text: string
           sequence_in_route: number | null
           status: string
@@ -63,12 +113,14 @@ export type Database = {
           weight: number
         }
         Insert: {
+          accepted_at?: string | null
           address: string
           assigned_rider_id?: string | null
           created_at?: string
           id?: string
           lat: number
           lng: number
+          offered_at?: string | null
           raw_text: string
           sequence_in_route?: number | null
           status?: string
@@ -77,12 +129,14 @@ export type Database = {
           weight?: number
         }
         Update: {
+          accepted_at?: string | null
           address?: string
           assigned_rider_id?: string | null
           created_at?: string
           id?: string
           lat?: number
           lng?: number
+          offered_at?: string | null
           raw_text?: string
           sequence_in_route?: number | null
           status?: string
@@ -127,36 +181,51 @@ export type Database = {
       riders: {
         Row: {
           capacity: number
+          consecutive_missed_offers: number
           created_at: string
           current_lat: number | null
           current_lng: number | null
           depot_lat: number
           depot_lng: number
           id: string
+          last_active_at: string | null
           location_updated_at: string | null
           profile_id: string
+          status: string
+          suspended_until: string | null
+          total_penalties: number
         }
         Insert: {
           capacity?: number
+          consecutive_missed_offers?: number
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
           depot_lat: number
           depot_lng: number
           id?: string
+          last_active_at?: string | null
           location_updated_at?: string | null
           profile_id: string
+          status?: string
+          suspended_until?: string | null
+          total_penalties?: number
         }
         Update: {
           capacity?: number
+          consecutive_missed_offers?: number
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
           depot_lat?: number
           depot_lng?: number
           id?: string
+          last_active_at?: string | null
           location_updated_at?: string | null
           profile_id?: string
+          status?: string
+          suspended_until?: string | null
+          total_penalties?: number
         }
         Relationships: [
           {
@@ -173,8 +242,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_order: { Args: { order_id: string }; Returns: undefined }
       current_rider_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      register_missed_offer: {
+        Args: {
+          p_rider_id: string
+          p_suspension_minutes: number
+          p_threshold: number
+        }
+        Returns: {
+          missed: number
+          penalized: boolean
+          profile_id: string
+          rider_name: string
+          total_penalties: number
+        }[]
+      }
+      set_my_status: { Args: { new_status: string }; Returns: undefined }
       update_my_location: {
         Args: { lat: number; lng: number }
         Returns: undefined

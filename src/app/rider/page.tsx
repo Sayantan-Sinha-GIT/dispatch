@@ -2,13 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
+import { NotificationBell } from "@/components/NotificationBell";
+import { StatCounter } from "@/components/StatCounter";
+import { useSweepPolling } from "@/lib/useSweepPolling";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
 type Rider = Tables<"riders">;
+
+const OFFER_WINDOW_MS = 5 * 60 * 1000;
+const EARNING_BASE = 35;
+const EARNING_PER_KG = 12;
 
 export default function RiderDashboard() {
   const router = useRouter();
@@ -17,12 +24,19 @@ export default function RiderDashboard() {
   const [rider, setRider] = useState<Rider | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [name, setName] = useState("");
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+  const [accepting, setAccepting] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useSweepPolling();
 
   const loadData = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
+    setProfileId(user.id);
 
     const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
     if (profile) setName(profile.name);
@@ -46,6 +60,7 @@ export default function RiderDashboard() {
     const channel = supabase
       .channel("rider-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "riders" }, () => loadData())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -54,7 +69,12 @@ export default function RiderDashboard() {
   }, [loadData]);
 
   useEffect(() => {
-    if (!rider || !("geolocation" in navigator)) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!rider || rider.status !== "active" || !("geolocation" in navigator)) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -71,7 +91,7 @@ export default function RiderDashboard() {
 
     return () => navigator.geolocation.clearWatch(watchId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rider?.id]);
+  }, [rider?.id, rider?.status]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -79,41 +99,129 @@ export default function RiderDashboard() {
     router.refresh();
   }
 
+  async function toggleStatus() {
+    if (!rider) return;
+    setTogglingStatus(true);
+    const nextStatus = rider.status === "active" ? "inactive" : "active";
+    await supabase.rpc("set_my_status", { new_status: nextStatus });
+    if (nextStatus === "inactive") {
+      await fetch("/api/rider/go-offline", { method: "POST" });
+    }
+    await loadData();
+    setTogglingStatus(false);
+  }
+
+  async function acceptOrder(orderId: string) {
+    setAccepting(orderId);
+    await supabase.rpc("accept_order", { order_id: orderId });
+    await loadData();
+    setAccepting(null);
+  }
+
   async function markDelivered(orderId: string) {
     await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
     loadData();
   }
 
-  const remaining = orders.filter((o) => o.status !== "delivered");
+  const offered = orders.filter((o) => o.status === "offered");
+  const remaining = orders.filter((o) => o.status === "assigned");
   const done = orders.filter((o) => o.status === "delivered");
+  const isActive = rider?.status === "active";
+  const isSuspended = !!rider?.suspended_until && new Date(rider.suspended_until).getTime() > now;
+  const earnings = done.reduce((sum, o) => sum + EARNING_BASE + o.weight * EARNING_PER_KG, 0);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="flex items-center justify-between border-b border-border px-5 py-4">
-        <div>
-          <p className="text-xs text-text-dim">Today&apos;s route</p>
-          <h1 className="font-display text-lg font-semibold">{name || "Rider"}</h1>
+    <div className="min-h-screen bg-bg pb-10">
+      <header className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface via-surface to-cyan/10 px-5 pb-6 pt-5">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan/10 blur-3xl" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan/60 font-display text-lg font-bold text-bg">
+              {(name || "R").charAt(0).toUpperCase()}
+            </span>
+            <div>
+              <p className="text-xs text-text-dim">Welcome back</p>
+              <h1 className="font-display text-xl font-semibold">{name || "Rider"}</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {profileId && <NotificationBell profileId={profileId} accent="cyan" />}
+            <button
+              onClick={handleSignOut}
+              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-text-dim"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="rounded-lg border border-border px-3 py-2 text-sm text-text-dim"
-        >
-          Sign out
-        </button>
+
+        <div className="relative mt-5 flex items-center justify-between rounded-2xl border border-border bg-surface-raised/80 p-4 backdrop-blur">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-text-dim">Status</p>
+            <p className={`font-display text-lg font-semibold ${isActive ? "text-success" : "text-text-dim"}`}>
+              {isActive ? "You're online" : "You're offline"}
+            </p>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={toggleStatus}
+            disabled={togglingStatus || !rider}
+            className={`relative h-9 w-16 rounded-full transition-colors ${isActive ? "bg-success" : "bg-border"}`}
+          >
+            <motion.span
+              layout
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              className="absolute top-1 h-7 w-7 rounded-full bg-white shadow-md"
+              style={{ left: isActive ? "calc(100% - 32px)" : "4px" }}
+            />
+          </motion.button>
+        </div>
+
+        {isSuspended && rider?.suspended_until && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative mt-3 rounded-xl border border-danger/40 bg-danger/10 p-3 text-xs text-danger"
+          >
+            Suspended from new offers until{" "}
+            {new Date(rider.suspended_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} due to
+            repeated missed deliveries.
+          </motion.div>
+        )}
+
+        <div className="relative mt-4 grid grid-cols-3 gap-3">
+          <RiderStat label="Delivered" value={done.length} />
+          <RiderStat label="Earnings" value={earnings} prefix="₹" decimals={0} />
+          <RiderStat label="Missed streak" value={rider?.consecutive_missed_offers ?? 0} warn />
+        </div>
       </header>
 
-      <div className="h-64 border-b border-border">
+      <AnimatePresence>
+        {offered.map((order) => (
+          <OfferCard
+            key={order.id}
+            order={order}
+            now={now}
+            onAccept={() => acceptOrder(order.id)}
+            accepting={accepting === order.id}
+          />
+        ))}
+      </AnimatePresence>
+
+      <div className="mx-4 mt-4 h-56 overflow-hidden rounded-2xl border border-border">
         {rider && (
           <RouteMapClient
-            orders={orders.map((o) => ({
-              id: o.id,
-              lat: o.lat,
-              lng: o.lng,
-              address: o.address,
-              status: o.status,
-              assigned_rider_id: o.assigned_rider_id,
-              sequence_in_route: o.sequence_in_route,
-            }))}
+            orders={orders
+              .filter((o) => o.status !== "offered")
+              .map((o) => ({
+                id: o.id,
+                lat: o.lat,
+                lng: o.lng,
+                address: o.address,
+                status: o.status,
+                assigned_rider_id: o.assigned_rider_id,
+                sequence_in_route: o.sequence_in_route,
+              }))}
             riders={[
               {
                 id: rider.id,
@@ -131,7 +239,7 @@ export default function RiderDashboard() {
 
       <main className="space-y-3 p-4">
         <p className="text-sm text-text-dim">
-          {remaining.length} stop{remaining.length !== 1 ? "s" : ""} remaining
+          {remaining.length} stop{remaining.length !== 1 ? "s" : ""} in progress
         </p>
 
         {remaining.map((order, idx) => (
@@ -140,9 +248,9 @@ export default function RiderDashboard() {
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: idx * 0.05 }}
-            className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-lg shadow-black/10"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber/20 font-display text-sm font-semibold text-amber">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber/20 font-display text-sm font-semibold text-amber">
               {(order.sequence_in_route ?? idx) + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -151,33 +259,34 @@ export default function RiderDashboard() {
             </div>
             <button
               onClick={() => markDelivered(order.id)}
-              className="shrink-0 rounded-lg bg-success/20 px-3 py-2.5 text-xs font-semibold text-success active:scale-95"
+              className="shrink-0 rounded-xl bg-success/20 px-3.5 py-2.5 text-xs font-semibold text-success active:scale-95"
             >
               Delivered
             </button>
           </motion.div>
         ))}
 
-        {remaining.length === 0 && orders.length > 0 && (
-          <div className="rounded-xl border border-success/30 bg-success/10 p-6 text-center text-sm text-success">
-            All stops delivered. Nice work!
+        {remaining.length === 0 && offered.length === 0 && !isActive && (
+          <div className="rounded-2xl border border-border bg-surface p-8 text-center text-sm text-text-dim">
+            You&apos;re offline. Go active to start receiving delivery requests.
           </div>
         )}
 
-        {orders.length === 0 && (
-          <div className="rounded-xl border border-border bg-surface p-6 text-center text-sm text-text-dim">
-            No route assigned yet.
+        {remaining.length === 0 && offered.length === 0 && isActive && (
+          <div className="rounded-2xl border border-cyan/30 bg-cyan/5 p-8 text-center text-sm text-cyan">
+            You&apos;re online and waiting for new delivery requests…
           </div>
         )}
 
         {done.length > 0 && (
           <details className="pt-2">
-            <summary className="cursor-pointer text-xs text-text-dim">
-              {done.length} delivered
-            </summary>
+            <summary className="cursor-pointer text-xs text-text-dim">{done.length} delivered today</summary>
             <div className="mt-2 space-y-1.5">
               {done.map((order) => (
-                <div key={order.id} className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-text-dim line-through">
+                <div
+                  key={order.id}
+                  className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-text-dim line-through"
+                >
                   {order.address}
                 </div>
               ))}
@@ -186,5 +295,97 @@ export default function RiderDashboard() {
         )}
       </main>
     </div>
+  );
+}
+
+function RiderStat({
+  label,
+  value,
+  prefix = "",
+  decimals = 0,
+  warn = false,
+}: {
+  label: string;
+  value: number;
+  prefix?: string;
+  decimals?: number;
+  warn?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised/60 p-3 text-center backdrop-blur">
+      <span className="inline-flex items-baseline gap-0.5">
+        {prefix && <span className="text-xs text-text-dim">{prefix}</span>}
+        <StatCounter
+          value={value}
+          decimals={decimals}
+          className={`font-display text-lg font-bold ${warn && value > 0 ? "text-danger" : "text-text"}`}
+        />
+      </span>
+      <p className="mt-0.5 text-[10px] uppercase tracking-wide text-text-dim">{label}</p>
+    </div>
+  );
+}
+
+function OfferCard({
+  order,
+  now,
+  onAccept,
+  accepting,
+}: {
+  order: Order;
+  now: number;
+  onAccept: () => void;
+  accepting: boolean;
+}) {
+  const offeredAt = order.offered_at ? new Date(order.offered_at).getTime() : now;
+  const remainingMs = Math.max(0, offeredAt + OFFER_WINDOW_MS - now);
+  const remainingSec = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(remainingSec / 60);
+  const seconds = remainingSec % 60;
+  const progress = Math.max(0, Math.min(1, remainingMs / OFFER_WINDOW_MS));
+  const circumference = 2 * Math.PI * 18;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -16, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -16, scale: 0.96 }}
+      className="mx-4 mt-4 overflow-hidden rounded-2xl border-2 border-amber bg-gradient-to-br from-amber/15 via-surface to-surface p-4 shadow-2xl shadow-amber/10"
+    >
+      <div className="flex items-center gap-4">
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+          <svg width="48" height="48" className="-rotate-90">
+            <circle cx="24" cy="24" r="18" stroke="#262d38" strokeWidth="4" fill="none" />
+            <circle
+              cx="24"
+              cy="24"
+              r="18"
+              stroke="#ffb020"
+              strokeWidth="4"
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - progress)}
+              strokeLinecap="round"
+            />
+          </svg>
+          <span className="absolute font-mono text-[10px] font-semibold text-amber">
+            {minutes}:{seconds.toString().padStart(2, "0")}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber">New delivery request</p>
+          <p className="truncate text-sm font-semibold">{order.address}</p>
+          <p className="text-xs text-text-dim">{order.weight} kg</p>
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={onAccept}
+          disabled={accepting}
+          className="shrink-0 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-bg disabled:opacity-60"
+        >
+          {accepting ? "…" : "Accept"}
+        </motion.button>
+      </div>
+    </motion.div>
   );
 }

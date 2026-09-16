@@ -6,14 +6,25 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ROUTE_COLORS } from "@/lib/routeColors";
 
-const DEFAULT_ICON = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
+const STATUS_COLORS: Record<string, string> = {
+  pending: "#8b96a5",
+  offered: "#ffb020",
+  expired: "#8b96a5",
+  assigned: "#2dd4c4",
+  delivered: "#3ddc97",
+  failed: "#ff5470",
+};
+
+function orderIcon(status: string) {
+  const color = STATUS_COLORS[status] ?? "#8b96a5";
+  const pulse = status === "offered" ? `box-shadow:0 0 0 6px ${color}33;` : "";
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:15px;height:15px;border-radius:50%;background:${color};border:2px solid #0a0d12;${pulse}"></div>`,
+    iconSize: [15, 15],
+    iconAnchor: [7, 7],
+  });
+}
 
 export interface MapOrder {
   id: string;
@@ -259,11 +270,13 @@ export function RouteMap({
         )}
 
         {orders.map((order) => (
-          <Marker key={order.id} position={[order.lat, order.lng]} icon={DEFAULT_ICON}>
+          <Marker key={order.id} position={[order.lat, order.lng]} icon={orderIcon(order.status)}>
             <Popup>
               {order.address}
               <br />
-              {order.status}
+              <span style={{ color: STATUS_COLORS[order.status], fontWeight: 600, textTransform: "uppercase" }}>
+                {order.status}
+              </span>
             </Popup>
           </Marker>
         ))}
