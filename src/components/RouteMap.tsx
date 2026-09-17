@@ -15,14 +15,16 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "#ff5470",
 };
 
-function orderIcon(status: string) {
+function orderIcon(status: string, focused = false) {
   const color = STATUS_COLORS[status] ?? "#8b96a5";
   const pulse = status === "offered" ? `box-shadow:0 0 0 6px ${color}33;` : "";
+  const size = focused ? 24 : 15;
+  const ring = focused ? `box-shadow:0 0 0 5px #4f9dff88;` : pulse;
   return L.divIcon({
     className: "",
-    html: `<div style="width:15px;height:15px;border-radius:50%;background:${color};border:2px solid #0a0d12;${pulse}"></div>`,
-    iconSize: [15, 15],
-    iconAnchor: [7, 7],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #0a0d12;${ring}"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 }
 
@@ -63,6 +65,15 @@ function FocusRider({ rider }: { rider: MapRider | undefined }) {
     const lng = rider.current_lng ?? rider.depot_lng;
     map.flyTo([lat, lng], 15, { duration: 1 });
   }, [rider, map]);
+  return null;
+}
+
+function FocusOrder({ order }: { order: MapOrder | undefined }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!order) return;
+    map.flyTo([order.lat, order.lng], 16, { duration: 1 });
+  }, [order, map]);
   return null;
 }
 
@@ -180,11 +191,13 @@ export function RouteMap({
   orders,
   riders,
   focusRiderId = null,
+  focusOrderId = null,
   showLocateMe = false,
 }: {
   orders: MapOrder[];
   riders: MapRider[];
   focusRiderId?: string | null;
+  focusOrderId?: string | null;
   showLocateMe?: boolean;
 }) {
   // Captured once on mount; all subsequent view changes go through FitBounds
@@ -220,6 +233,7 @@ export function RouteMap({
   }, [riders, orders]);
 
   const focusedRider = riders.find((r) => r.id === focusRiderId);
+  const focusedOrder = orders.find((o) => o.id === focusOrderId);
 
   return (
     <div className="relative h-full w-full">
@@ -235,6 +249,7 @@ export function RouteMap({
         />
         <FitBounds points={allPoints} />
         <FocusRider rider={focusedRider} />
+        <FocusOrder order={focusedOrder} />
         {showLocateMe && <LocateMeControl />}
 
         {riders.map((rider) => (
@@ -270,7 +285,12 @@ export function RouteMap({
         )}
 
         {orders.map((order) => (
-          <Marker key={order.id} position={[order.lat, order.lng]} icon={orderIcon(order.status)}>
+          <Marker
+            key={order.id}
+            position={[order.lat, order.lng]}
+            icon={orderIcon(order.status, order.id === focusOrderId)}
+            zIndexOffset={order.id === focusOrderId ? 1000 : 0}
+          >
             <Popup>
               {order.address}
               <br />

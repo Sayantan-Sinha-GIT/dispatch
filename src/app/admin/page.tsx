@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [optimizing, setOptimizing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [focusRiderId, setFocusRiderId] = useState<string | null>(null);
+  const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [profileId, setProfileId] = useState<string | null>(null);
 
@@ -194,9 +195,22 @@ export default function AdminDashboard() {
           )}
 
           <section className="rounded-2xl border border-border bg-surface p-4">
-            <h2 className="mb-3 flex items-center gap-1.5 font-display text-sm font-semibold">
-              <span>✨</span> Add orders
-            </h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-1.5 font-display text-sm font-semibold">
+                <span>✨</span> Add orders
+              </h2>
+              {focusOrderId && (
+                <button
+                  onClick={() => {
+                    setFocusOrderId(null);
+                    setRawText("");
+                  }}
+                  className="text-[10px] font-medium uppercase tracking-wide text-cyan hover:underline"
+                >
+                  Showing tagged order · clear
+                </button>
+              )}
+            </div>
             <form onSubmit={handleParseOrders} className="space-y-3">
               <textarea
                 value={rawText}
@@ -234,7 +248,10 @@ export default function AdminDashboard() {
                 return (
                   <button
                     key={rider.id}
-                    onClick={() => setFocusRiderId(rider.id)}
+                    onClick={() => {
+                      setFocusRiderId(rider.id);
+                      setFocusOrderId(null);
+                    }}
                     className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
                       focusRiderId === rider.id
                         ? "border-cyan/60 bg-cyan/10"
@@ -308,13 +325,22 @@ export default function AdminDashboard() {
             <h2 className="mb-3 font-display text-sm font-semibold">Orders ({orders.length})</h2>
             <div className="max-h-80 space-y-1.5 overflow-y-auto">
               {orders.map((order) => (
-                <div
+                <button
                   key={order.id}
-                  className="flex items-center justify-between rounded-lg bg-surface-raised px-3 py-2 text-xs"
+                  onClick={() => {
+                    setFocusOrderId(order.id);
+                    setFocusRiderId(null);
+                    setRawText(order.raw_text);
+                  }}
+                  className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                    focusOrderId === order.id
+                      ? "border-cyan/60 bg-cyan/10"
+                      : "border-transparent bg-surface-raised hover:border-cyan/30"
+                  }`}
                 >
                   <span className="truncate pr-2">{order.address}</span>
                   <StatusPill status={order.status} />
-                </div>
+                </button>
               ))}
               {orders.length === 0 && (
                 <p className="py-4 text-center text-xs text-text-dim">No orders yet.</p>
@@ -343,6 +369,7 @@ export default function AdminDashboard() {
               current_lng: r.current_lng,
             }))}
             focusRiderId={focusRiderId}
+            focusOrderId={focusOrderId}
             showLocateMe
           />
         </section>

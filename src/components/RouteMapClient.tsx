@@ -16,6 +16,7 @@ export function RouteMapClient(props: {
   orders: MapOrder[];
   riders: MapRider[];
   focusRiderId?: string | null;
+  focusOrderId?: string | null;
   showLocateMe?: boolean;
 }) {
   return <RouteMap {...props} />;
