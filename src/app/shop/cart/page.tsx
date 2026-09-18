@@ -3,18 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { cartSubtotal, clearCart, getCart, setQty, type CartItem } from "@/lib/cart";
+import { LocationPickerModal } from "@/components/LocationPickerModal";
 
 const DELIVERY_FEE = 25;
+const DEFAULT_CENTER = { lat: 12.9716, lng: 77.5946 };
 
 export default function ShopCartPage() {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [address, setAddress] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-  const [locating, setLocating] = useState(false);
+  const [houseNo, setHouseNo] = useState("");
+  const [street, setStreet] = useState("");
+  const [locality, setLocality] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,30 +29,18 @@ export default function ShopCartPage() {
     return () => window.removeEventListener("cart-updated", onUpdate);
   }, []);
 
-  function useMyLocation() {
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
-        setLocating(false);
-      },
-      (err) => {
-        setError(`Couldn't get your location: ${err.message}`);
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
-
   async function handlePlaceOrder() {
-    if (!address.trim() || !lat || !lng) {
-      setError("Add your delivery address and location.");
+    if (!houseNo.trim() || !street.trim() || !locality.trim()) {
+      setError("Fill in house/flat no., street, and locality.");
+      return;
+    }
+    if (!coords) {
+      setError("Pin your delivery location on the map.");
       return;
     }
     setError(null);
     setPlacing(true);
+    const address = [houseNo, street, locality, landmark && `near ${landmark}`].filter(Boolean).join(", ");
     try {
       const res = await fetch("/api/shop/checkout", {
         method: "POST",
@@ -56,8 +48,8 @@ export default function ShopCartPage() {
         body: JSON.stringify({
           items: cart.map((c) => ({ productId: c.productId, qty: c.qty })),
           address,
-          lat: parseFloat(lat),
-          lng: parseFloat(lng),
+          lat: coords.lat,
+          lng: coords.lng,
         }),
       });
       const json = await res.json();
@@ -113,21 +105,51 @@ export default function ShopCartPage() {
 
         <section>
           <h2 className="mb-2.5 font-display text-sm font-semibold">Delivery address</h2>
-          <textarea
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            rows={2}
-            placeholder="Flat / house no., street, landmark, area"
-            className="w-full resize-none rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
-          />
-          <button
+          <div className="space-y-2.5">
+            <input
+              value={houseNo}
+              onChange={(e) => setHouseNo(e.target.value)}
+              placeholder="Flat / House no."
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+            />
+            <input
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
+              placeholder="Road / street name"
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+            />
+            <input
+              value={locality}
+              onChange={(e) => setLocality(e.target.value)}
+              placeholder="Locality / area"
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+            />
+            <input
+              value={landmark}
+              onChange={(e) => setLandmark(e.target.value)}
+              placeholder="Nearest landmark (optional)"
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+            />
+          </div>
+          <motion.button
             type="button"
-            onClick={useMyLocation}
-            disabled={locating}
-            className="mt-2 w-full rounded-lg border border-amber/40 bg-amber/10 py-2 text-sm font-medium text-amber transition-colors hover:bg-amber/20 disabled:opacity-50"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setPickerOpen(true)}
+            className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+              coords ? "border border-success/40 bg-success/10 text-success" : "border border-amber/40 bg-amber/10 text-amber hover:bg-amber/20"
+            }`}
           >
-            {locating ? "Locating…" : lat ? "📍 Location captured" : "Use my current location"}
-          </button>
+            {coords ? (
+              <>
+                📍 Location pinned{" "}
+                <span className="font-mono text-[11px] opacity-70">
+                  ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+                </span>
+              </>
+            ) : (
+              "🗺️ Pin delivery location on map"
+            )}
+          </motion.button>
         </section>
 
         {cart.length > 0 && (
@@ -166,6 +188,20 @@ export default function ShopCartPage() {
           <p className="mt-2 text-center text-[11px] text-text-dim">Auto-assigned to the nearest available rider instantly</p>
         </div>
       )}
+
+      <AnimatePresence>
+        {pickerOpen && (
+          <LocationPickerModal
+            initialLat={coords?.lat ?? DEFAULT_CENTER.lat}
+            initialLng={coords?.lng ?? DEFAULT_CENTER.lng}
+            onClose={() => setPickerOpen(false)}
+            onConfirm={(lat, lng) => {
+              setCoords({ lat, lng });
+              setPickerOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
