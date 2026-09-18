@@ -143,6 +143,12 @@ function ShopLoginForm() {
             Rider sign in
           </Link>
         </p>
+        <p className="mt-1 text-center text-xs text-text-dim">
+          Dispatcher?{" "}
+          <Link href="/login" className="text-amber hover:underline">
+            Admin login
+          </Link>
+        </p>
       </motion.div>
     </div>
   );
