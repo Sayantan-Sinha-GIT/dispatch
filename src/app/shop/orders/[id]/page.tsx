@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
+import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -58,25 +59,6 @@ function Confetti() {
   );
 }
 
-function AmbientBackground({ accent }: { accent: "amber" | "cyan" | "success" }) {
-  const color = accent === "success" ? "rgba(61,220,151,0.16)" : accent === "cyan" ? "rgba(45,212,196,0.14)" : "rgba(255,176,32,0.16)";
-  return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-bg" />
-      <motion.div
-        className="absolute -left-40 top-0 h-96 w-96 rounded-full blur-[110px]"
-        style={{ background: color }}
-        animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
-        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-cyan/10 blur-[110px]"
-        animate={{ x: [0, -40, 0], y: [0, -30, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-      />
-    </div>
-  );
-}
 
 export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

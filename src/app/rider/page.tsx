@@ -8,7 +8,9 @@ import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { AmbientBackground } from "@/components/AmbientBackground";
 import { StatCounter } from "@/components/StatCounter";
+import { useLanguage } from "@/components/LanguageProvider";
 import { useSweepPolling } from "@/lib/useSweepPolling";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -22,6 +24,7 @@ const EARNING_PER_KG = 12;
 export default function RiderDashboard() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useLanguage();
 
   const [rider, setRider] = useState<Rider | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -133,16 +136,22 @@ export default function RiderDashboard() {
   const earnings = done.reduce((sum, o) => sum + EARNING_BASE + o.weight * EARNING_PER_KG, 0);
 
   return (
-    <div className="min-h-screen bg-bg pb-10">
-      <header className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface via-surface to-cyan/10 px-5 pb-6 pt-5">
+    <div className="relative min-h-screen pb-10">
+      <AmbientBackground accent={isSuspended ? "amber" : isActive ? "success" : "cyan"} />
+
+      <header className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface via-surface to-cyan/10 px-5 pb-6 pt-5 backdrop-blur-sm">
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan/10 blur-3xl" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan/60 font-display text-lg font-bold text-bg">
+            <motion.span
+              animate={isActive ? { boxShadow: ["0 0 0 0 rgba(61,220,151,0.4)", "0 0 0 8px rgba(61,220,151,0)"] } : {}}
+              transition={{ duration: 1.8, repeat: Infinity }}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan/60 font-display text-lg font-bold text-bg"
+            >
               {(name || "R").charAt(0).toUpperCase()}
-            </span>
+            </motion.span>
             <div>
-              <p className="text-xs text-text-dim">Welcome back</p>
+              <p className="text-xs text-text-dim">{t("rider.welcomeBack")}</p>
               <h1 className="font-display text-xl font-semibold">{name || "Rider"}</h1>
             </div>
           </div>
@@ -152,19 +161,26 @@ export default function RiderDashboard() {
             {profileId && <NotificationBell profileId={profileId} accent="cyan" />}
             <button
               onClick={handleSignOut}
-              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-text-dim"
+              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-text-dim transition-colors hover:border-cyan/50 hover:text-text"
             >
-              Sign out
+              {t("rider.signOut")}
             </button>
           </div>
         </div>
 
-        <div className="relative mt-5 flex items-center justify-between rounded-2xl border border-border bg-surface-raised/80 p-4 backdrop-blur">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-text-dim">Status</p>
-            <p className={`font-display text-lg font-semibold ${isActive ? "text-success" : "text-text-dim"}`}>
-              {isActive ? "You're online" : "You're offline"}
-            </p>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative mt-5 flex items-center justify-between rounded-2xl border border-border bg-surface-raised/80 p-4 backdrop-blur"
+        >
+          <div className="flex items-center gap-2.5">
+            {isActive && <span className="h-2 w-2 animate-pulse rounded-full bg-success" />}
+            <div>
+              <p className="text-xs uppercase tracking-wide text-text-dim">Status</p>
+              <p className={`font-display text-lg font-semibold ${isActive ? "text-success" : "text-text-dim"}`}>
+                {isActive ? t("rider.online") : t("rider.offline")}
+              </p>
+            </div>
           </div>
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -179,7 +195,7 @@ export default function RiderDashboard() {
               style={{ left: isActive ? "calc(100% - 32px)" : "4px" }}
             />
           </motion.button>
-        </div>
+        </motion.div>
 
         {isSuspended && rider?.suspended_until && (
           <motion.div
@@ -194,9 +210,9 @@ export default function RiderDashboard() {
         )}
 
         <div className="relative mt-4 grid grid-cols-3 gap-3">
-          <RiderStat label="Delivered" value={done.length} />
-          <RiderStat label="Earnings" value={earnings} prefix="₹" decimals={0} />
-          <RiderStat label="Missed streak" value={rider?.consecutive_missed_offers ?? 0} warn />
+          <RiderStat label={t("rider.delivered")} value={done.length} />
+          <RiderStat label={t("rider.earnings")} value={earnings} prefix="₹" decimals={0} />
+          <RiderStat label={t("rider.missedStreak")} value={rider?.consecutive_missed_offers ?? 0} warn />
         </div>
       </header>
 
@@ -212,7 +228,7 @@ export default function RiderDashboard() {
         ))}
       </AnimatePresence>
 
-      <div className="mx-4 mt-4 h-56 overflow-hidden rounded-2xl border border-border">
+      <div className="mx-4 mt-4 h-56 overflow-hidden rounded-2xl border border-border shadow-xl shadow-black/10">
         {rider && (
           <RouteMapClient
             orders={orders
@@ -243,7 +259,7 @@ export default function RiderDashboard() {
 
       <main className="space-y-3 p-4">
         <p className="text-sm text-text-dim">
-          {remaining.length} stop{remaining.length !== 1 ? "s" : ""} in progress
+          {remaining.length} {t("rider.stopsInProgress")}
         </p>
 
         {remaining.map((order, idx) => (
@@ -251,8 +267,9 @@ export default function RiderDashboard() {
             key={order.id}
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
+            whileHover={{ y: -2 }}
             transition={{ delay: idx * 0.05 }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-lg shadow-black/10"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-lg shadow-black/10 transition-colors hover:border-cyan/30"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber/20 font-display text-sm font-semibold text-amber">
               {(order.sequence_in_route ?? idx) + 1}
@@ -261,25 +278,40 @@ export default function RiderDashboard() {
               <p className="truncate text-sm font-medium">{order.address}</p>
               <p className="text-xs text-text-dim">{order.weight} kg</p>
             </div>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => markDelivered(order.id)}
-              className="shrink-0 rounded-xl bg-success/20 px-3.5 py-2.5 text-xs font-semibold text-success active:scale-95"
+              className="shrink-0 rounded-xl bg-success/20 px-3.5 py-2.5 text-xs font-semibold text-success"
             >
-              Delivered
-            </button>
+              {t("rider.deliveredBtn")}
+            </motion.button>
           </motion.div>
         ))}
 
         {remaining.length === 0 && offered.length === 0 && !isActive && (
-          <div className="rounded-2xl border border-border bg-surface p-8 text-center text-sm text-text-dim">
-            You&apos;re offline. Go active to start receiving delivery requests.
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center rounded-2xl border border-border bg-surface p-10 text-center"
+          >
+            <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2.4, repeat: Infinity }} className="mb-3 text-3xl">
+              💤
+            </motion.span>
+            <p className="text-sm text-text-dim">{t("rider.offlineHint")}</p>
+          </motion.div>
         )}
 
         {remaining.length === 0 && offered.length === 0 && isActive && (
-          <div className="rounded-2xl border border-cyan/30 bg-cyan/5 p-8 text-center text-sm text-cyan">
-            You&apos;re online and waiting for new delivery requests…
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center rounded-2xl border border-cyan/30 bg-cyan/5 p-10 text-center text-cyan"
+          >
+            <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity }} className="mb-3 text-3xl">
+              📡
+            </motion.span>
+            <p className="text-sm">{t("rider.waitingHint")}</p>
+          </motion.div>
         )}
 
         {done.length > 0 && (
@@ -341,6 +373,7 @@ function OfferCard({
   onAccept: () => void;
   accepting: boolean;
 }) {
+  const { t } = useLanguage();
   const offeredAt = order.offered_at ? new Date(order.offered_at).getTime() : now;
   const remainingMs = Math.max(0, offeredAt + OFFER_WINDOW_MS - now);
   const remainingSec = Math.ceil(remainingMs / 1000);
@@ -352,7 +385,13 @@ function OfferCard({
   return (
     <motion.div
       initial={{ opacity: 0, y: -16, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        boxShadow: ["0 0 0 0 rgba(255,176,32,0.3)", "0 0 0 10px rgba(255,176,32,0)"],
+      }}
+      transition={{ boxShadow: { duration: 1.6, repeat: Infinity } }}
       exit={{ opacity: 0, y: -16, scale: 0.96 }}
       className="mx-4 mt-4 overflow-hidden rounded-2xl border-2 border-amber bg-gradient-to-br from-amber/15 via-surface to-surface p-4 shadow-2xl shadow-amber/10"
     >
@@ -377,7 +416,7 @@ function OfferCard({
           </span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber">New delivery request</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber">{t("rider.newRequest")}</p>
           <p className="truncate text-sm font-semibold">{order.address}</p>
           <p className="text-xs text-text-dim">{order.weight} kg</p>
         </div>
@@ -387,7 +426,7 @@ function OfferCard({
           disabled={accepting}
           className="shrink-0 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-bg disabled:opacity-60"
         >
-          {accepting ? "…" : "Accept"}
+          {accepting ? "…" : t("rider.accept")}
         </motion.button>
       </div>
     </motion.div>

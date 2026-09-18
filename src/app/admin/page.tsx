@@ -13,6 +13,8 @@ import { ProductsTab } from "@/components/admin/ProductsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { AmbientBackground } from "@/components/AmbientBackground";
+import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -23,6 +25,7 @@ type Notification = Tables<"notifications">;
 export default function AdminDashboard() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useLanguage();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [riders, setRiders] = useState<Rider[]>([]);
@@ -142,8 +145,9 @@ export default function AdminDashboard() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="relative overflow-hidden border-b border-border bg-gradient-to-r from-surface via-surface to-amber/10 px-6 py-5">
+    <div className="relative min-h-screen">
+      <AmbientBackground accent="amber" />
+      <header className="relative overflow-hidden border-b border-border bg-gradient-to-r from-surface via-surface to-amber/10 px-6 py-5 backdrop-blur-sm">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -151,8 +155,8 @@ export default function AdminDashboard() {
               D
             </span>
             <div>
-              <h1 className="font-display text-xl font-semibold leading-tight">Dispatch Console</h1>
-              <p className="text-xs text-text-dim">Hyperlocal delivery command center</p>
+              <h1 className="font-display text-xl font-semibold leading-tight">{t("admin.title")}</h1>
+              <p className="text-xs text-text-dim">{t("admin.tagline")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -163,25 +167,25 @@ export default function AdminDashboard() {
               onClick={handleSignOut}
               className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-dim transition-colors hover:border-amber/50 hover:text-text"
             >
-              Sign out
+              {t("admin.signOut")}
             </button>
           </div>
         </div>
 
         <div className="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <KpiCard label="Pending" value={pendingCount} icon="📥" />
-          <KpiCard label="Awaiting accept" value={offeredCount} icon="⏳" accent="text-amber" />
-          <KpiCard label="In progress" value={inProgressCount} icon="🛵" accent="text-cyan" />
-          <KpiCard label="Delivered" value={deliveredCount} icon="✅" accent="text-success" />
-          <KpiCard label="Active riders" value={riders.length} icon="🟢" accent="text-success" />
+          <KpiCard label={t("admin.kpi.pending")} value={pendingCount} icon="📥" />
+          <KpiCard label={t("admin.kpi.awaitingAccept")} value={offeredCount} icon="⏳" accent="text-amber" />
+          <KpiCard label={t("admin.kpi.inProgress")} value={inProgressCount} icon="🛵" accent="text-cyan" />
+          <KpiCard label={t("admin.kpi.delivered")} value={deliveredCount} icon="✅" accent="text-success" />
+          <KpiCard label={t("admin.kpi.activeRiders")} value={riders.length} icon="🟢" accent="text-success" pulse={riders.length > 0} />
         </div>
 
         <div className="relative mt-5 flex gap-2">
           {(
             [
-              ["dispatch", "Dispatch"],
-              ["products", "Products"],
-              ["users", "Users"],
+              ["dispatch", t("admin.tab.dispatch")],
+              ["products", t("admin.tab.products")],
+              ["users", t("admin.tab.users")],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -229,7 +233,7 @@ export default function AdminDashboard() {
           <section className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-1.5 font-display text-sm font-semibold">
-                <span>✨</span> {focusOrderId ? "Edit tagged order" : "Add orders"}
+                <span>✨</span> {focusOrderId ? t("admin.editTagged") : t("admin.addOrders")}
               </h2>
               {focusOrderId && (
                 <button
@@ -263,9 +267,14 @@ export default function AdminDashboard() {
             </form>
           </section>
 
-          <section className="rounded-2xl border border-border bg-surface p-4">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="rounded-2xl border border-border bg-surface p-4"
+          >
             <h2 className="mb-1 flex items-center gap-1.5 font-display text-sm font-semibold">
-              <span>🟢</span> Active riders ({riders.length})
+              <span>🟢</span> {t("admin.activeRidersHeading")} ({riders.length})
             </h2>
             <p className="mb-3 text-xs text-text-dim">
               Riders create their own accounts from the{" "}
@@ -311,10 +320,10 @@ export default function AdminDashboard() {
                 );
               })}
               {riders.length === 0 && (
-                <p className="py-4 text-center text-xs text-text-dim">No riders online right now.</p>
+                <p className="py-4 text-center text-xs text-text-dim">{t("admin.noRidersOnline")}</p>
               )}
             </div>
-          </section>
+          </motion.section>
 
           <motion.button
             whileTap={{ scale: 0.98 }}
@@ -322,7 +331,7 @@ export default function AdminDashboard() {
             disabled={optimizing || riders.length === 0}
             className="w-full rounded-xl bg-gradient-to-r from-cyan to-cyan/70 py-3.5 text-sm font-bold text-bg shadow-lg shadow-cyan/20 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {optimizing ? "Optimizing…" : "⚡ Optimize routes"}
+            {optimizing ? "Optimizing…" : `⚡ ${t("admin.optimizeRoutes")}`}
           </motion.button>
 
           <AnimatePresence>
@@ -338,25 +347,44 @@ export default function AdminDashboard() {
             )}
           </AnimatePresence>
 
-          <section className="rounded-2xl border border-border bg-surface p-4">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-2xl border border-border bg-surface p-4"
+          >
             <h2 className="mb-3 flex items-center gap-1.5 font-display text-sm font-semibold">
-              <span>📜</span> Activity
+              <span>📜</span> {t("admin.activity")}
             </h2>
             <div className="max-h-56 space-y-2 overflow-y-auto">
-              {activity.map((n) => (
-                <div key={n.id} className="rounded-lg bg-surface-raised px-3 py-2 text-xs">
-                  <p className="font-medium">{n.title}</p>
-                  {n.body && <p className="mt-0.5 text-text-dim">{n.body}</p>}
-                </div>
-              ))}
+              <AnimatePresence initial={false}>
+                {activity.map((n) => (
+                  <motion.div
+                    key={n.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="rounded-lg bg-surface-raised px-3 py-2 text-xs"
+                  >
+                    <p className="font-medium">{n.title}</p>
+                    {n.body && <p className="mt-0.5 text-text-dim">{n.body}</p>}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               {activity.length === 0 && (
-                <p className="py-4 text-center text-xs text-text-dim">No activity yet.</p>
+                <p className="py-4 text-center text-xs text-text-dim">{t("admin.noActivity")}</p>
               )}
             </div>
-          </section>
+          </motion.section>
 
-          <section className="rounded-2xl border border-border bg-surface p-4">
-            <h2 className="mb-3 font-display text-sm font-semibold">Orders ({orders.length})</h2>
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="rounded-2xl border border-border bg-surface p-4"
+          >
+            <h2 className="mb-3 font-display text-sm font-semibold">
+              {t("admin.orders")} ({orders.length})
+            </h2>
             <div className="max-h-80 space-y-1.5 overflow-y-auto">
               {orders.map((order) => (
                 <button
@@ -377,13 +405,17 @@ export default function AdminDashboard() {
                 </button>
               ))}
               {orders.length === 0 && (
-                <p className="py-4 text-center text-xs text-text-dim">No orders yet.</p>
+                <p className="py-4 text-center text-xs text-text-dim">{t("admin.noOrders")}</p>
               )}
             </div>
-          </section>
+          </motion.section>
         </div>
 
-        <section className="min-h-[500px] overflow-hidden rounded-2xl border border-border shadow-2xl shadow-black/20 lg:min-h-0">
+        <motion.section
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="min-h-[500px] overflow-hidden rounded-2xl border border-border shadow-2xl shadow-black/20 lg:min-h-0"
+        >
           <RouteMapClient
             orders={orders.map((o) => ({
               id: o.id,
@@ -406,7 +438,7 @@ export default function AdminDashboard() {
             focusOrderId={focusOrderId}
             showLocateMe
           />
-        </section>
+        </motion.section>
       </main>
       )}
     </div>
@@ -418,20 +450,28 @@ function KpiCard({
   value,
   icon,
   accent = "text-text",
+  pulse = false,
 }: {
   label: string;
   value: number;
   icon: string;
   accent?: string;
+  pulse?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-raised/70 p-3 backdrop-blur">
+    <motion.div
+      whileHover={{ y: -3 }}
+      className="rounded-xl border border-border bg-surface-raised/70 p-3 backdrop-blur transition-colors hover:border-amber/30"
+    >
       <div className="flex items-center justify-between">
         <StatCounter value={value} decimals={0} className={`font-display text-xl font-bold ${accent}`} />
-        <span className="text-lg leading-none">{icon}</span>
+        <span className="relative text-lg leading-none">
+          {icon}
+          {pulse && <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-success" />}
+        </span>
       </div>
       <p className="mt-1 text-[10px] uppercase tracking-wide text-text-dim">{label}</p>
-    </div>
+    </motion.div>
   );
 }
 
