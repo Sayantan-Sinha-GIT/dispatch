@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AuthBackground } from "@/components/AuthBackground";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function RiderOnboardingPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [capacity, setCapacity] = useState(10);
   const [depotLat, setDepotLat] = useState("");
   const [depotLng, setDepotLng] = useState("");
@@ -24,7 +26,7 @@ export default function RiderOnboardingPage() {
         setLocating(false);
       },
       (err) => {
-        setError(`Couldn't get your location: ${err.message}`);
+        setError(t("rider.err.geolocation", { message: err.message }));
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -34,7 +36,7 @@ export default function RiderOnboardingPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!depotLat || !depotLng) {
-      setError("Set your starting location to continue.");
+      setError(t("rider.onboarding.err.noLocation"));
       return;
     }
     setError(null);
@@ -46,7 +48,7 @@ export default function RiderOnboardingPage() {
     });
     const json = await res.json();
     if (!res.ok) {
-      setError(json.error ?? "Something went wrong");
+      setError(json.error ?? t("common.err.generic"));
       setLoading(false);
       return;
     }
@@ -64,8 +66,8 @@ export default function RiderOnboardingPage() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl shadow-black/40"
       >
-        <h1 className="mb-1 font-display text-lg font-semibold">One last thing</h1>
-        <p className="mb-6 text-xs text-text-dim">Tell us where you start your day so we can route deliveries to you.</p>
+        <h1 className="mb-1 font-display text-lg font-semibold">{t("rider.onboarding.title")}</h1>
+        <p className="mb-6 text-xs text-text-dim">{t("rider.onboarding.subtitle")}</p>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
@@ -91,17 +93,17 @@ export default function RiderOnboardingPage() {
               disabled={locating}
               className="mb-2 w-full rounded-lg border border-cyan/40 bg-cyan/10 py-2 text-sm font-medium text-cyan transition-colors hover:bg-cyan/20 disabled:opacity-50"
             >
-              {locating ? "Locating…" : "Use my current location"}
+              {locating ? t("common.locating") : t("common.useMyLocation")}
             </button>
             <div className="flex gap-2">
               <input
-                placeholder="Latitude"
+                placeholder={t("common.ph.lat")}
                 value={depotLat}
                 onChange={(e) => setDepotLat(e.target.value)}
                 className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-cyan"
               />
               <input
-                placeholder="Longitude"
+                placeholder={t("common.ph.lng")}
                 value={depotLng}
                 onChange={(e) => setDepotLng(e.target.value)}
                 className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-cyan"
@@ -119,7 +121,7 @@ export default function RiderOnboardingPage() {
             disabled={loading}
             className="w-full rounded-lg bg-cyan py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Saving…" : "Start receiving deliveries"}
+            {loading ? t("common.saving") : t("rider.onboarding.submit")}
           </motion.button>
         </form>
       </motion.div>

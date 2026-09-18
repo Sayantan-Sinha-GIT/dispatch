@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
+  const { t } = useLanguage();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <motion.button
       whileTap={{ scale: 0.9 }}
       onClick={toggle}
-      aria-label="Toggle theme"
+      aria-label={t("a11y.toggleTheme")}
       className={`flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-raised text-text-dim transition-colors hover:text-text ${className}`}
     >
       {theme === "dark" ? (

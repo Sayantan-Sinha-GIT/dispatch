@@ -35,11 +35,11 @@ export default function ShopCartPage() {
   async function handlePlaceOrder() {
     if (submittingRef.current) return;
     if (!houseNo.trim() || !street.trim() || !locality.trim()) {
-      setError("Fill in house/flat no., street, and locality.");
+      setError(t("cart.err.missingAddress"));
       return;
     }
     if (!coords) {
-      setError("Pin your delivery location on the map.");
+      setError(t("cart.err.noPin"));
       return;
     }
     submittingRef.current = true;
@@ -58,11 +58,11 @@ export default function ShopCartPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Could not place order");
+      if (!res.ok) throw new Error(json.error ?? t("cart.err.placeFailed"));
       clearCart();
       router.push(`/shop/orders/${json.orderId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not place order");
+      setError(err instanceof Error ? err.message : t("cart.err.placeFailed"));
     } finally {
       setPlacing(false);
       submittingRef.current = false;
@@ -95,7 +95,7 @@ export default function ShopCartPage() {
               >
                 <div className="flex-grow">
                   <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-text-dim">₹{item.price} each</p>
+                  <p className="text-xs text-text-dim">₹{item.price} {t("cart.each")}</p>
                 </div>
                 <div className="flex items-center gap-2.5 rounded-lg bg-surface-raised px-2 py-1">
                   <button onClick={() => setQty(item.productId, item.qty - 1)} className="px-1.5 text-sm transition-transform active:scale-90">
@@ -200,6 +200,7 @@ export default function ShopCartPage() {
       <AnimatePresence>
         {pickerOpen && (
           <LocationPickerModal
+            key="location-picker"
             initialLat={coords?.lat ?? DEFAULT_CENTER.lat}
             initialLng={coords?.lng ?? DEFAULT_CENTER.lng}
             onClose={() => setPickerOpen(false)}

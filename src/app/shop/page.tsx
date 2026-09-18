@@ -90,7 +90,7 @@ export default function ShopCatalogPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for milk, bread, eggs…"
+            placeholder={t("shop.searchPlaceholder")}
             className="w-full rounded-xl border border-border bg-surface-raised py-2.5 pl-10 pr-3.5 text-sm outline-none transition-colors focus:border-amber"
           />
         </div>
@@ -162,13 +162,14 @@ export default function ShopCatalogPage() {
               );
             })}
         {!loading && filtered.length === 0 && (
-          <p className="col-span-full py-16 text-center text-sm text-text-dim">No products match &ldquo;{query}&rdquo;.</p>
+          <p className="col-span-full py-16 text-center text-sm text-text-dim">{t("shop.noMatch", { query })}</p>
         )}
       </main>
 
       <AnimatePresence>
         {count > 0 && (
           <motion.div
+            key="cart-bar"
             initial={{ y: 80 }}
             animate={{ y: 0 }}
             exit={{ y: 80 }}
@@ -192,6 +193,7 @@ export default function ShopCatalogPage() {
       <AnimatePresence>
         {viewing && (
           <motion.div
+            key="product-sheet"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "@/components/LanguageProvider";
+
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -78,6 +80,7 @@ function FocusOrder({ order }: { order: MapOrder | undefined }) {
 }
 
 function LocateMeControl() {
+  const { t } = useLanguage();
   const map = useMap();
   const [me, setMe] = useState<[number, number] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +110,7 @@ function LocateMeControl() {
         type="button"
         onClick={handleLocate}
         disabled={locating}
-        title="Show my current location"
+        title={t("map.tip.locate")}
         className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-raised text-text shadow-lg transition-colors hover:border-amber/50 disabled:opacity-50"
       >
         {locating ? (
@@ -134,7 +137,7 @@ function LocateMeControl() {
             iconAnchor: [8, 8],
           })}
         >
-          <Popup>You are here</Popup>
+          <Popup>{t("map.youAreHere")}</Popup>
         </Marker>
       )}
     </>

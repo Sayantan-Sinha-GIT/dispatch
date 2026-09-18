@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { autoAssignOrder } from "@/lib/dispatch";
+import { runDispatchTick } from "@/lib/dispatch";
 
 const DELIVERY_FEE = 25;
 
@@ -77,7 +77,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error?.message ?? "Could not place order" }, { status: 500 });
   }
 
-  await autoAssignOrder(admin, order);
+  const { error: eventError } = await admin.from("order_events").insert({
+    order_id: order.id,
+    event_type: "placed",
+    actor_role: "customer",
+    actor_id: user.id,
+    detail: `Order placed — ${priced.length} item(s), ₹${total}`,
+  });
+  if (eventError) console.error("order_events insert failed", eventError);
+
+  // Every assignment goes through the routing engine, including this one: the
+  // tick re-plans the whole pending pool with the new order in it rather than
+  // grabbing whichever rider happens to be nearest to it alone.
+  await runDispatchTick(admin);
 
   return NextResponse.json({ orderId: order.id });
 }

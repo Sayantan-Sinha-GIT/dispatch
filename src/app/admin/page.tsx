@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -11,10 +11,12 @@ import { useSweepPolling } from "@/lib/useSweepPolling";
 import { ROUTE_COLORS } from "@/lib/routeColors";
 import { ProductsTab } from "@/components/admin/ProductsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
+import { SupportTab } from "@/components/admin/SupportTab";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
+import { CommandConsole } from "@/components/admin/CommandConsole";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -31,19 +33,16 @@ export default function AdminDashboard() {
   const [riders, setRiders] = useState<Rider[]>([]);
   const [lastRun, setLastRun] = useState<OptimizationRun | null>(null);
   const [activity, setActivity] = useState<Notification[]>([]);
-  const [rawText, setRawText] = useState("");
-  const [parsing, setParsing] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [focusRiderId, setFocusRiderId] = useState<string | null>(null);
   const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"dispatch" | "products" | "users">("dispatch");
+  const [tab, setTab] = useState<"dispatch" | "products" | "users" | "support">("dispatch");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
-  const parsingRef = useRef(false);
 
   useSweepPolling();
 
@@ -99,32 +98,6 @@ export default function AdminDashboard() {
     router.refresh();
   }
 
-  async function handleParseOrders(e: React.FormEvent) {
-    e.preventDefault();
-    if (!rawText.trim() || parsingRef.current) return;
-    parsingRef.current = true;
-    setParsing(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/orders/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText, editOrderId: focusOrderId ?? undefined }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      setMessage(focusOrderId ? "Order updated." : `Added ${json.orders.length} order(s).`);
-      setRawText("");
-      setFocusOrderId(null);
-      loadData();
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to parse orders");
-    } finally {
-      setParsing(false);
-      parsingRef.current = false;
-    }
-  }
-
   async function handleDeleteOrder(orderId: string) {
     if (confirmDeleteId !== orderId) {
       setConfirmDeleteId(orderId);
@@ -137,11 +110,10 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(json.error);
       if (focusOrderId === orderId) {
         setFocusOrderId(null);
-        setRawText("");
       }
       loadData();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to delete order");
+      setMessage(err instanceof Error ? err.message : t("admin.err.deleteFailed"));
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);
@@ -154,10 +126,10 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/orders/${orderId}/reassign`, { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMessage("Order pulled back to the pending pool.");
+      setMessage(t("admin.msg.orderReassigned"));
       loadData();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to reassign order");
+      setMessage(err instanceof Error ? err.message : t("admin.err.reassignFailed"));
     } finally {
       setReassigningId(null);
     }
@@ -170,10 +142,10 @@ export default function AdminDashboard() {
       const res = await fetch("/api/optimize", { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMessage("Routes offered to riders — waiting on acceptance.");
+      setMessage(t("admin.msg.routesOffered"));
       loadData();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Optimization failed");
+      setMessage(err instanceof Error ? err.message : t("admin.err.optimizeFailed"));
     } finally {
       setOptimizing(false);
     }
@@ -230,6 +202,7 @@ export default function AdminDashboard() {
               ["dispatch", t("admin.tab.dispatch")],
               ["products", t("admin.tab.products")],
               ["users", t("admin.tab.users")],
+              ["support", t("admin.tab.support")],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -247,6 +220,7 @@ export default function AdminDashboard() {
 
       {tab === "products" && <ProductsTab />}
       {tab === "users" && <UsersTab />}
+      {tab === "support" && <SupportTab />}
 
       {tab === "dispatch" && (
       <main className="grid grid-cols-1 gap-5 p-6 lg:grid-cols-[380px_1fr]">
@@ -257,7 +231,7 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               className="overflow-hidden rounded-2xl border border-cyan/20 bg-gradient-to-br from-cyan/10 via-surface to-surface p-4"
             >
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-dim">Last optimization</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-dim">{t("admin.lastOptimization")}</p>
               <div className="flex items-baseline gap-2">
                 <StatCounter
                   value={lastRun.total_distance_after}
@@ -269,47 +243,12 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-success">
-                {distanceSaved > 0 ? `${distanceSaved.toFixed(0)}% shorter than naive baseline` : ""}
+                {distanceSaved > 0 ? t("admin.shorterThanBaseline", { pct: distanceSaved.toFixed(0) }) : ""}
               </p>
             </motion.section>
           )}
 
-          <section className="rounded-2xl border border-border bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="flex items-center gap-1.5 font-display text-sm font-semibold">
-                <span>✨</span> {focusOrderId ? t("admin.editTagged") : t("admin.addOrders")}
-              </h2>
-              {focusOrderId && (
-                <button
-                  onClick={() => {
-                    setFocusOrderId(null);
-                    setRawText("");
-                  }}
-                  className="text-[10px] font-medium uppercase tracking-wide text-cyan hover:underline"
-                >
-                  Showing tagged order · clear
-                </button>
-              )}
-            </div>
-            <form onSubmit={handleParseOrders} className="space-y-3">
-              <textarea
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                placeholder="Paste messy order text, e.g. '2kg parcel to 12 MG Road, Bangalore, deliver between 2-4pm; also one to Koramangala 5th block...'"
-                rows={5}
-                className={`w-full resize-none rounded-lg border bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-amber ${
-                  focusOrderId ? "border-cyan/40" : "border-border"
-                }`}
-              />
-              <button
-                type="submit"
-                disabled={parsing}
-                className="w-full rounded-lg bg-gradient-to-r from-amber to-amber/80 py-2.5 text-sm font-semibold text-bg shadow-lg shadow-amber/20 transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {parsing ? "Parsing…" : focusOrderId ? "Update this order with Gemini" : "Parse with Gemini"}
-              </button>
-            </form>
-          </section>
+          <CommandConsole onChanged={loadData} />
 
           <motion.section
             initial={{ opacity: 0, y: 12 }}
@@ -321,11 +260,11 @@ export default function AdminDashboard() {
               <span>🟢</span> {t("admin.activeRidersHeading")} ({riders.length})
             </h2>
             <p className="mb-3 text-xs text-text-dim">
-              Riders create their own accounts from the{" "}
+              {t("admin.ridersHint1")}{" "}
               <a href="/rider/signup" target="_blank" rel="noreferrer" className="text-cyan hover:underline">
                 rider portal
               </a>{" "}
-              and only appear here while online. Click one to locate them.
+              {t("admin.ridersHint2")}
             </p>
             <div className="space-y-1.5">
               {riders.map((rider, idx) => {
@@ -353,15 +292,15 @@ export default function AdminDashboard() {
                         {(rider.profiles?.name ?? "R").charAt(0).toUpperCase()}
                       </span>
                       <span>
-                        <span className="block">{rider.profiles?.name ?? "Rider"}</span>
-                        {isSuspended && <span className="block text-[10px] text-danger">suspended</span>}
+                        <span className="block">{rider.profiles?.name ?? t("common.rider")}</span>
+                        {isSuspended && <span className="block text-[10px] text-danger">{t("admin.suspended")}</span>}
                       </span>
                     </span>
                     <span
                       className={`text-[10px] uppercase ${isLive ? "text-success" : "text-text-dim"}`}
-                      title={isLive ? "GPS updated within the last 2 minutes" : "No recent GPS ping — location on map may be stale"}
+                      title={isLive ? "GPS updated within the last 2 minutes" : t("admin.tip.gpsStale")}
                     >
-                      {isLive ? "● live gps" : "no gps"}
+                      {isLive ? `● ${t("admin.liveGps")}` : t("admin.noGps")}
                     </span>
                   </button>
                 );
@@ -378,12 +317,13 @@ export default function AdminDashboard() {
             disabled={optimizing || riders.length === 0}
             className="w-full rounded-xl bg-gradient-to-r from-cyan to-cyan/70 py-3.5 text-sm font-bold text-bg shadow-lg shadow-cyan/20 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {optimizing ? "Optimizing…" : `⚡ ${t("admin.optimizeRoutes")}`}
+            {optimizing ? t("admin.optimizing") : `⚡ ${t("admin.optimizeRoutes")}`}
           </motion.button>
 
           <AnimatePresence>
             {message && (
               <motion.p
+                key="admin-message"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
@@ -449,7 +389,6 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setFocusOrderId(order.id);
                         setFocusRiderId(null);
-                        setRawText(order.raw_text);
                       }}
                       className="flex min-w-0 flex-grow items-center justify-between gap-2 px-1.5 py-1 text-left hover:opacity-80"
                     >
@@ -461,7 +400,7 @@ export default function AdminDashboard() {
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleReassignOrder(order.id)}
                         disabled={reassigningId === order.id}
-                        title="Pull this order back to pending (rider stuck/unresponsive)"
+                        title={t("admin.tip.reassign")}
                         className="shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold text-text-dim transition-colors hover:bg-amber/15 hover:text-amber"
                       >
                         {reassigningId === order.id ? "…" : "↺"}
@@ -472,14 +411,14 @@ export default function AdminDashboard() {
                       onClick={() => handleDeleteOrder(order.id)}
                       onBlur={() => setConfirmDeleteId((id) => (id === order.id ? null : id))}
                       disabled={deletingId === order.id}
-                      title={confirmDeleteId === order.id ? "Click again to confirm delete" : "Delete order"}
+                      title={confirmDeleteId === order.id ? t("admin.tip.confirmDelete") : t("admin.tip.delete")}
                       className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
                         confirmDeleteId === order.id
                           ? "bg-danger text-white"
                           : "text-text-dim hover:bg-danger/15 hover:text-danger"
                       }`}
                     >
-                      {deletingId === order.id ? "…" : confirmDeleteId === order.id ? "Confirm?" : "🗑"}
+                      {deletingId === order.id ? "…" : confirmDeleteId === order.id ? t("admin.confirmQ") : "🗑"}
                     </motion.button>
                   </motion.div>
                 ))}
@@ -510,7 +449,7 @@ export default function AdminDashboard() {
               id: r.id,
               depot_lat: r.depot_lat,
               depot_lng: r.depot_lng,
-              name: r.profiles?.name ?? "Rider",
+              name: r.profiles?.name ?? t("common.rider"),
               current_lat: r.current_lat,
               current_lng: r.current_lng,
             }))}
@@ -556,16 +495,19 @@ function KpiCard({
 }
 
 function StatusPill({ status }: { status: string }) {
+  const { t } = useLanguage();
   const colors: Record<string, string> = {
     pending: "bg-text-dim/20 text-text-dim",
     offered: "bg-amber/20 text-amber",
     assigned: "bg-cyan/20 text-cyan",
     delivered: "bg-success/20 text-success",
     failed: "bg-danger/20 text-danger",
+    expired: "bg-amber/20 text-amber",
+    cancelled: "bg-danger/20 text-danger",
   };
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${colors[status] ?? ""}`}>
-      {status}
+      {t(`status.${status}`)}
     </span>
   );
 }

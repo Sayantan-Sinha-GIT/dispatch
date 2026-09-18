@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
 
 type Notification = Tables<"notifications">;
@@ -18,6 +19,7 @@ const ICONS: Record<string, string> = {
 };
 
 export function NotificationBell({ profileId, accent = "amber" }: { profileId: string; accent?: "amber" | "cyan" }) {
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,6 +98,7 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
       <AnimatePresence>
         {open && (
           <motion.div
+            key="notif-panel"
             initial={{ opacity: 0, y: -8, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -103,11 +106,11 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
             className="absolute right-0 top-11 z-[1100] w-80 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-2xl shadow-black/50"
           >
             <div className="border-b border-border px-4 py-2.5">
-              <p className="text-sm font-semibold">Notifications</p>
+              <p className="text-sm font-semibold">{t("notif.title")}</p>
             </div>
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 && (
-                <p className="px-4 py-8 text-center text-xs text-text-dim">Nothing yet.</p>
+                <p className="px-4 py-8 text-center text-xs text-text-dim">{t("notif.empty")}</p>
               )}
               {notifications.map((n) => (
                 <div key={n.id} className="border-b border-border/50 px-4 py-3 last:border-0">

@@ -7,16 +7,18 @@ import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
+import { CancelWindow } from "@/components/shop/CancelWindow";
+import { SupportSheet } from "@/components/shop/SupportSheet";
 import type { Tables } from "@/lib/supabase/types";
 
 type Rider = Tables<"riders"> & { profiles?: { name: string } | null };
 type Order = Tables<"orders"> & { riders?: Rider | null };
 
 const STEPS = [
-  { key: "placed", label: "Order placed", icon: "🧾" },
-  { key: "offered", label: "Rider notified", icon: "📡" },
-  { key: "assigned", label: "Out for delivery", icon: "🛵" },
-  { key: "delivered", label: "Delivered", icon: "🎉" },
+  { key: "placed", labelKey: "tracking.step.placed", icon: "🧾" },
+  { key: "offered", labelKey: "tracking.step.offered", icon: "📡" },
+  { key: "assigned", labelKey: "tracking.step.assigned", icon: "🛵" },
+  { key: "delivered", labelKey: "tracking.step.delivered", icon: "🎉" },
 ];
 
 function stepIndex(status: string) {
@@ -106,10 +108,10 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
       <div className="relative flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center text-sm text-text-dim">
         <AmbientBackground accent="amber" />
         <span className="text-3xl">🚫</span>
-        <p className="text-base font-semibold text-text">This order was cancelled</p>
-        <p className="max-w-xs">It's no longer available — an admin may have removed it. Check your other orders instead.</p>
+        <p className="text-base font-semibold text-text">{t("tracking.cancelled.title")}</p>
+        <p className="max-w-xs">{t("tracking.cancelled.body")}</p>
         <Link href="/shop/orders" className="mt-2 rounded-full bg-amber px-5 py-2 font-semibold text-bg">
-          Back to orders
+          {t("tracking.backToOrders")}
         </Link>
       </div>
     );
@@ -122,13 +124,14 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
         <motion.span animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} className="mr-2 text-lg">
           🛵
         </motion.span>
-        Loading your order…
+        {t("tracking.loading")}
       </div>
     );
   }
 
   const active = stepIndex(order.status);
   const isDelivered = order.status === "delivered";
+  const isCancelled = order.status === "cancelled";
   const accent: "amber" | "cyan" | "success" = isDelivered ? "success" : active >= 2 ? "cyan" : "amber";
   const items = Array.isArray(order.items) ? (order.items as { name: string; qty: number; price: number }[]) : [];
   const rider = order.riders ?? null;
@@ -143,20 +146,43 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           ←
         </Link>
         <div>
-          <p className="text-[11px] text-text-dim">Order #{order.id.slice(0, 8)}</p>
+          <p className="text-[11px] text-text-dim">{t("tracking.orderNumber")} #{order.id.slice(0, 8)}</p>
           <motion.h1
             key={order.status}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             className="font-display text-lg font-semibold"
           >
-            {isDelivered ? "Delivered 🎉" : active === 2 ? "Out for delivery" : active === 1 ? "Rider on the way to accept" : "Finding your rider…"}
+            {isCancelled ? t("tracking.head.cancelled") : isDelivered ? t("tracking.head.delivered") : active === 2 ? t("tracking.head.assigned") : active === 1 ? t("tracking.head.offered") : t("tracking.head.pending")}
           </motion.h1>
         </div>
       </header>
 
       <main className="mx-auto max-w-lg space-y-5 p-5">
-        {rider ? (
+        <AnimatePresence>
+          {!isCancelled && !isDelivered && (
+            <CancelWindow
+              key="cancel-window"
+              createdAt={order.created_at}
+              orderId={order.id}
+              onCancelled={() => setOrder((prev) => (prev ? { ...prev, status: "cancelled" } : prev))}
+            />
+          )}
+        </AnimatePresence>
+
+        {isCancelled && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-danger/40 bg-danger/10 p-4 text-sm text-danger"
+          >
+            {order.cancelled_by === "customer"
+              ? t("tracking.cancelledByYou")
+              : t("tracking.cancelled.body")}
+          </motion.div>
+        )}
+
+        {isCancelled ? null : rider ? (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -170,8 +196,8 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
               {rider.profiles?.name?.charAt(0).toUpperCase() ?? "R"}
             </motion.span>
             <div>
-              <p className="text-sm font-semibold">{rider.profiles?.name ?? "Your rider"}</p>
-              <p className="text-xs text-text-dim">On the way to you</p>
+              <p className="text-sm font-semibold">{rider.profiles?.name ?? t("tracking.yourRider")}</p>
+              <p className="text-xs text-text-dim">{t("tracking.onTheWay")}</p>
             </div>
           </motion.div>
         ) : (
@@ -183,7 +209,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
             <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.6, repeat: Infinity }} className="text-2xl">
               📡
             </motion.span>
-            <p className="text-sm text-text-dim">Matching you with the nearest available rider…</p>
+            <p className="text-sm text-text-dim">{t("tracking.matching")}</p>
           </motion.div>
         )}
 
@@ -200,7 +226,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
                   id: rider.id,
                   depot_lat: rider.depot_lat,
                   depot_lng: rider.depot_lng,
-                  name: rider.profiles?.name ?? "Rider",
+                  name: rider.profiles?.name ?? t("common.rider"),
                   current_lat: rider.current_lat,
                   current_lng: rider.current_lng,
                 },
@@ -231,7 +257,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
               >
                 {i <= active ? step.icon : i + 1}
               </motion.span>
-              <p className={`text-sm font-semibold ${i > active ? "text-text-dim" : ""}`}>{step.label}</p>
+              <p className={`text-sm font-semibold ${i > active ? "text-text-dim" : ""}`}>{t(step.labelKey)}</p>
             </div>
           ))}
         </div>
@@ -256,6 +282,8 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           <h2 className="mb-1 font-display text-sm font-semibold">{t("tracking.deliveringTo")}</h2>
           <p className="text-sm text-text-dim">{order.address}</p>
         </section>
+
+        <SupportSheet orderId={order.id} />
       </main>
     </div>
   );

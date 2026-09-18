@@ -41,7 +41,14 @@ function UnifiedLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  /**
+   * Customers default to a password because the emailed-code path depends on
+   * the provider's magic-link template and on the recipient's mail client not
+   * pre-fetching single-use links. The code path stays available as a choice.
+   */
+  const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "code">("signin");
   const [error, setError] = useState<string | null>(searchParams.get("error"));
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,6 +69,57 @@ function UnifiedLogin() {
     setNotice(null);
     setPassword("");
     setCode("");
+    setCustomerMode("signin");
+  }
+
+  async function signInCustomerWithPassword() {
+    const supabase = createClient();
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError || !data.user) {
+      setError(signInError?.message ?? t("login.err.signInFailed"));
+      setLoading(false);
+      return;
+    }
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
+    if (profile?.role && profile.role !== "customer") {
+      await supabase.auth.signOut();
+      setError(t("login.err.notCustomer"));
+      setLoading(false);
+      return;
+    }
+    router.push("/shop");
+    router.refresh();
+  }
+
+  async function handleCustomerPasswordSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    await signInCustomerWithPassword();
+  }
+
+  async function handleCustomerSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 8) {
+      setError(t("login.err.weakPassword"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/shop/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.code ? t(`api.err.${json.code}`) : json.error);
+      setNotice(t("login.signupSuccess"));
+      await signInCustomerWithPassword();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.err.generic"));
+      setLoading(false);
+    }
   }
 
   async function handleGoogle() {
@@ -114,7 +172,7 @@ function UnifiedLogin() {
     const json = await res.json();
     if (!res.ok) {
       await supabase.auth.signOut();
-      setError(json.error ?? "Could not sign in");
+      setError(json.error ?? t("login.err.couldNotSignIn"));
       setLoading(false);
       return;
     }
@@ -129,14 +187,14 @@ function UnifiedLogin() {
     const supabase = createClient();
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !data.user) {
-      setError(signInError?.message ?? "Sign in failed");
+      setError(signInError?.message ?? t("login.err.signInFailed"));
       setLoading(false);
       return;
     }
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
     if (profile?.role !== "rider") {
       await supabase.auth.signOut();
-      setError("This account isn't registered as a rider.");
+      setError(t("login.err.notRider"));
       setLoading(false);
       return;
     }
@@ -151,14 +209,14 @@ function UnifiedLogin() {
     const supabase = createClient();
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !data.user) {
-      setError(signInError?.message ?? "Sign in failed");
+      setError(signInError?.message ?? t("login.err.signInFailed"));
       setLoading(false);
       return;
     }
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
     if (profile?.role !== "admin") {
       await supabase.auth.signOut();
-      setError("This account isn't registered as an admin.");
+      setError(t("login.err.notAdmin"));
       setLoading(false);
       return;
     }
@@ -227,15 +285,63 @@ function UnifiedLogin() {
                   className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   <GoogleIcon />
-                  {googleLoading ? "Redirecting…" : t("login.google")}
+                  {googleLoading ? t("login.redirecting") : t("login.google")}
                 </motion.button>
                 <Divider label={t("login.orEmail")} />
-                <form onSubmit={handleCustomerContinue} className="space-y-4">
-                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder="you@example.com" accent="amber" />
-                  <ErrorNotice error={error} />
-                  <SubmitButton loading={loading} accent="amber" label={t("login.continueEmail")} loadingLabel={t("login.sendingCode")} />
-                </form>
-                <p className="mt-4 text-center text-[11px] text-text-dim">{t("login.otpHint")}</p>
+
+                {customerMode === "signin" && (
+                  <>
+                    <form onSubmit={handleCustomerPasswordSignIn} className="space-y-4">
+                      <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
+                      <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                      <ErrorNotice error={error} />
+                      <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                    </form>
+                    <p className="mt-4 text-center text-xs text-text-dim">
+                      {t("login.newHere")}{" "}
+                      <button type="button" onClick={() => { setCustomerMode("signup"); setError(null); }} className="text-amber hover:underline">
+                        {t("login.createAccount")}
+                      </button>
+                    </p>
+                    <button type="button" onClick={() => { setCustomerMode("code"); setError(null); }} className="mt-2 w-full text-center text-[11px] text-text-dim hover:text-text">
+                      {t("login.useEmailCode")}
+                    </button>
+                  </>
+                )}
+
+                {customerMode === "signup" && (
+                  <>
+                    <form onSubmit={handleCustomerSignUp} className="space-y-4">
+                      <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
+                      <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
+                      <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                      <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
+                      <ErrorNotice error={error} />
+                      {notice && <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">{notice}</p>}
+                      <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
+                    </form>
+                    <p className="mt-4 text-center text-xs text-text-dim">
+                      {t("login.haveAccount")}{" "}
+                      <button type="button" onClick={() => { setCustomerMode("signin"); setError(null); }} className="text-amber hover:underline">
+                        {t("login.signIn")}
+                      </button>
+                    </p>
+                  </>
+                )}
+
+                {customerMode === "code" && (
+                  <>
+                    <form onSubmit={handleCustomerContinue} className="space-y-4">
+                      <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
+                      <ErrorNotice error={error} />
+                      <SubmitButton loading={loading} accent="amber" label={t("login.continueEmail")} loadingLabel={t("login.sendingCode")} />
+                    </form>
+                    <p className="mt-4 text-center text-[11px] text-text-dim">{t("login.otpHint")}</p>
+                    <button type="button" onClick={() => { setCustomerMode("signin"); setError(null); }} className="mt-2 w-full text-center text-[11px] text-text-dim hover:text-text">
+                      {t("login.usePassword")}
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -271,11 +377,11 @@ function UnifiedLogin() {
                   className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   <GoogleIcon />
-                  {googleLoading ? "Redirecting…" : t("login.google")}
+                  {googleLoading ? t("login.redirecting") : t("login.google")}
                 </motion.button>
                 <Divider label={t("login.orEmail")} />
                 <form onSubmit={handleRiderSubmit} className="space-y-4">
-                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder="you@example.com" accent="cyan" />
+                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
                   <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
                   <ErrorNotice error={error} />
                   <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
@@ -291,7 +397,7 @@ function UnifiedLogin() {
 
             {role === "admin" && (
               <form onSubmit={handleAdminSubmit} className="space-y-4">
-                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder="you@dispatch.io" accent="amber" />
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
                 <ErrorNotice error={error} />
                 <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />

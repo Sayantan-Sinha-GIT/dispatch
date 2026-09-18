@@ -42,19 +42,19 @@ const ROLES = [
 ] as const;
 
 const STEPS = [
-  { n: "01", title: "Order comes in", desc: "A customer checks out, or an admin pastes messy order text that Gemini turns into structured stops." },
-  { n: "02", title: "Engine optimizes", desc: "A nearest-neighbor + 2-opt route solver finds the shortest path across every active rider's capacity." },
-  { n: "03", title: "Nearest rider offered", desc: "The closest free, unsuspended rider gets a 5-minute accept window — no scramble, no group chat." },
-  { n: "04", title: "Live to delivered", desc: "GPS updates stream in real time until drop-off. Miss the window enough times and it reroutes automatically." },
+  { n: "01", key: "how.step1" },
+  { n: "02", key: "how.step2" },
+  { n: "03", key: "how.step3" },
+  { n: "04", key: "how.step4" },
 ];
 
 const FEATURES = [
-  { icon: "🧭", title: "Live GPS tracking", desc: "Every active rider's position streams to the map in real time — for admins and the customer waiting on their order." },
-  { icon: "⚡", title: "Auto-assignment", desc: "Customer orders skip the queue and get offered to the nearest free rider the instant they're placed." },
-  { icon: "🔁", title: "Self-healing routes", desc: "Unaccepted offers expire and reroute to the next-nearest rider — no order is ever stuck waiting on one person." },
-  { icon: "🛡️", title: "Fair penalty system", desc: "Three missed offers in a row trigger a cool-down suspension, not an instant ban — accountability without cruelty." },
-  { icon: "🔐", title: "Google & OTP sign-in", desc: "Customers and riders sign in with Google or a one-time email code. No passwords to forget." },
-  { icon: "📊", title: "Command console", desc: "Admins get a live KPI dashboard, a clickable order-to-map focus view, and full product/customer management." },
+  { icon: "🧭", key: "features.gps" },
+  { icon: "⚡", key: "features.autoAssign" },
+  { icon: "🔁", key: "features.selfHealing" },
+  { icon: "🛡️", key: "features.penalty" },
+  { icon: "🔐", key: "features.auth" },
+  { icon: "📊", key: "features.console" },
 ];
 
 function GradientBlob({ className, color }: { className: string; color: string }) {
@@ -332,8 +332,8 @@ function HowItWorks() {
               {i + 1}
             </span>
             <p className="mb-1 font-mono text-xs text-text-dim">{step.n}</p>
-            <h3 className="font-display text-xl font-bold">{step.title}</h3>
-            <p className="mt-1.5 max-w-md text-sm leading-relaxed text-text-dim">{step.desc}</p>
+            <h3 className="font-display text-xl font-bold">{t(`${step.key}.title`)}</h3>
+            <p className="mt-1.5 max-w-md text-sm leading-relaxed text-text-dim">{t(`${step.key}.desc`)}</p>
           </motion.div>
         ))}
       </div>
@@ -349,7 +349,7 @@ function Features() {
       <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f, i) => (
           <motion.div
-            key={f.title}
+            key={f.key}
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -358,8 +358,8 @@ function Features() {
             className="rounded-2xl border border-border bg-surface p-6 transition-colors"
           >
             <span className="text-2xl">{f.icon}</span>
-            <h3 className="mt-4 font-display text-base font-bold">{f.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-text-dim">{f.desc}</p>
+            <h3 className="mt-4 font-display text-base font-bold">{t(`${f.key}.title`)}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-text-dim">{t(`${f.key}.desc`)}</p>
           </motion.div>
         ))}
       </div>
@@ -368,6 +368,7 @@ function Features() {
 }
 
 function LiveConsolePreview() {
+  const { t } = useLanguage();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 2400);
@@ -389,7 +390,7 @@ function LiveConsolePreview() {
 
   return (
     <section className="relative mx-auto max-w-5xl px-6 py-28">
-      <SectionHeading eyebrow="A glimpse inside" title="The console dispatchers actually use" />
+      <SectionHeading eyebrow={t("preview.eyebrow")} title={t("preview.title")} />
       <motion.div
         initial={{ opacity: 0, y: 40, rotateX: 8 }}
         whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
@@ -402,7 +403,7 @@ function LiveConsolePreview() {
           <span className="h-2.5 w-2.5 rounded-full bg-danger/60" />
           <span className="h-2.5 w-2.5 rounded-full bg-amber/60" />
           <span className="h-2.5 w-2.5 rounded-full bg-success/60" />
-          <span className="ml-3 font-mono text-[11px] text-text-dim">dispatch console — live</span>
+          <span className="ml-3 font-mono text-[11px] text-text-dim">{t("preview.windowTitle")}</span>
         </div>
         <div className="grid gap-4 p-5 sm:grid-cols-[1fr_1.3fr]">
           <div className="space-y-2">
@@ -417,7 +418,7 @@ function LiveConsolePreview() {
                 >
                   <span className="truncate pr-2 text-text-dim">{r.label}</span>
                   <span
-                    key={`${r.status}-${tick}-${i}`}
+                    key={`${t(`status.${r.status}`)}-${tick}-${i}`}
                     className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${colors[r.status]}`}
                   >
                     {r.status}

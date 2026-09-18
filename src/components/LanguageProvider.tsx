@@ -1,16 +1,38 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { dictionary, type Lang, type TranslationKey } from "@/lib/i18n";
+import { dictionary, type Lang } from "@/lib/i18n";
+
+export type TParams = Record<string, string | number>;
+/**
+ * Keys are `string` rather than a literal union so dynamic lookups like
+ * `t(\`status.${order.status}\`)` typecheck. Missing keys fall back to English,
+ * then to the key itself, so a gap degrades to readable text instead of blank UI.
+ */
+export type TFunction = (key: string, params?: TParams) => string;
+
+function interpolate(template: string, params?: TParams) {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
+
+function translate(lang: Lang, key: string, params?: TParams) {
+  const table = dictionary[lang] as Record<string, string>;
+  const fallback = dictionary.en as Record<string, string>;
+  const template = table[key] ?? fallback[key] ?? key;
+  return interpolate(template, params);
+}
 
 const LanguageContext = createContext<{
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: TranslationKey) => string;
+  t: TFunction;
 }>({
   lang: "en",
   setLang: () => {},
-  t: (key) => dictionary.en[key],
+  t: (key, params) => translate("en", key, params),
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
@@ -23,12 +45,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   function setLang(l: Lang) {
     setLangState(l);
-    localStorage.setItem("lang", l);
+    try {
+      localStorage.setItem("lang", l);
+      document.documentElement.lang = l;
+    } catch {
+      // private mode / blocked storage — the toggle still works for this session
+    }
   }
 
-  function t(key: TranslationKey) {
-    return dictionary[lang][key] ?? dictionary.en[key] ?? key;
-  }
+  const t: TFunction = (key, params) => translate(lang, key, params);
 
   return <LanguageContext.Provider value={{ lang, setLang, t }}>{children}</LanguageContext.Provider>;
 }

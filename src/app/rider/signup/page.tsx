@@ -4,11 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/components/LanguageProvider";
 import { createClient } from "@/lib/supabase/client";
 import { AuthBackground } from "@/components/AuthBackground";
 
 export default function RiderSignupPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -35,7 +37,7 @@ export default function RiderSignupPage() {
         setLocating(false);
       },
       (err) => {
-        setError(`Couldn't get your location: ${err.message}`);
+        setError(t("rider.err.geolocation", { message: err.message }));
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -48,7 +50,7 @@ export default function RiderSignupPage() {
     setNotice(null);
 
     if (!form.depotLat || !form.depotLng) {
-      setError("Set your starting location before signing up.");
+      setError(t("rider.signup.err.noLocation"));
       return;
     }
 
@@ -69,7 +71,7 @@ export default function RiderSignupPage() {
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "Sign up failed");
+      setError(json.error ?? t("rider.signup.err.failed"));
       setLoading(false);
       return;
     }
@@ -81,7 +83,7 @@ export default function RiderSignupPage() {
     });
 
     if (signInError) {
-      setNotice("Account created — log in to continue.");
+      setNotice(t("rider.signup.notice.created"));
       setLoading(false);
       return;
     }
@@ -105,7 +107,7 @@ export default function RiderSignupPage() {
             D
           </span>
           <div>
-            <h1 className="font-display text-lg font-semibold leading-none">Join as a rider</h1>
+            <h1 className="font-display text-lg font-semibold leading-none">{t("rider.signup.title")}</h1>
             <p className="text-xs text-text-dim">Dispatch</p>
           </div>
         </div>
@@ -120,7 +122,7 @@ export default function RiderSignupPage() {
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-cyan"
-              placeholder="Your name"
+              placeholder={t("rider.signup.ph.name")}
             />
           </div>
           <div>
@@ -133,7 +135,7 @@ export default function RiderSignupPage() {
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-cyan"
-              placeholder="you@example.com"
+              placeholder={t("login.ph.email")}
             />
           </div>
           <div>
@@ -173,17 +175,17 @@ export default function RiderSignupPage() {
               disabled={locating}
               className="mb-2 w-full rounded-lg border border-cyan/40 bg-cyan/10 py-2 text-sm font-medium text-cyan transition-colors hover:bg-cyan/20 disabled:opacity-50"
             >
-              {locating ? "Locating…" : "Use my current location"}
+              {locating ? t("common.locating") : t("common.useMyLocation")}
             </button>
             <div className="flex gap-2">
               <input
-                placeholder="Latitude"
+                placeholder={t("common.ph.lat")}
                 value={form.depotLat}
                 onChange={(e) => setForm((f) => ({ ...f, depotLat: e.target.value }))}
                 className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-cyan"
               />
               <input
-                placeholder="Longitude"
+                placeholder={t("common.ph.lng")}
                 value={form.depotLng}
                 onChange={(e) => setForm((f) => ({ ...f, depotLng: e.target.value }))}
                 className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-cyan"
@@ -208,18 +210,18 @@ export default function RiderSignupPage() {
             disabled={loading}
             className="w-full rounded-lg bg-cyan py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Creating account…" : "Sign up"}
+            {loading ? t("rider.signup.creating") : "Sign up"}
           </motion.button>
         </form>
 
         <p className="mt-5 text-center text-xs text-text-dim">
-          Already have an account?{" "}
+          {t("rider.signup.haveAccount")}{" "}
           <Link href="/login?role=rider" className="text-cyan hover:underline">
             Log in
           </Link>
         </p>
         <p className="mt-1 text-center text-xs text-text-dim">
-          Dispatcher?{" "}
+          {t("rider.signup.dispatcher")}{" "}
           <Link href="/login?role=admin" className="text-amber hover:underline">
             Admin login
           </Link>

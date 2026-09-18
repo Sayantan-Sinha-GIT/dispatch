@@ -1,12 +1,23 @@
 "use client";
 
+import { useLanguage } from "@/components/LanguageProvider";
+
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
+function MapLoading() {
+  const { t } = useLanguage();
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-surface text-sm text-text-dim">
+      {t("common.loadingMap")}
+    </div>
+  );
+}
+
 const LocationPickerMap = dynamic(() => import("./LocationPickerMap").then((m) => m.LocationPickerMap), {
   ssr: false,
-  loading: () => <div className="flex h-full w-full items-center justify-center bg-surface text-sm text-text-dim">Loading map…</div>,
+  loading: () => <MapLoading />,
 });
 
 export type AddressGuess = {
@@ -63,6 +74,7 @@ export function LocationPickerModal({
   onConfirm: (lat: number, lng: number, guess: AddressGuess | null) => void;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; token: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -163,7 +175,7 @@ export function LocationPickerModal({
               <input
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
-                placeholder="Search for area, street, landmark…"
+                placeholder={t("picker.searchPlaceholder")}
                 className="w-full rounded-full border border-border bg-surface/95 px-4 py-3 text-sm shadow-lg outline-none backdrop-blur focus:border-amber"
               />
               {searching && (
@@ -172,6 +184,7 @@ export function LocationPickerModal({
               <AnimatePresence>
                 {suggestions.length > 0 && (
                   <motion.div
+                    key="picker-suggestions"
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
@@ -208,7 +221,7 @@ export function LocationPickerModal({
             ) : (
               "📍"
             )}
-            {locating ? "Locating…" : "Use my location"}
+            {locating ? t("common.locating") : t("picker.useMyLocation")}
           </button>
 
           {error && (
@@ -224,10 +237,10 @@ export function LocationPickerModal({
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="border-t border-border bg-surface p-5"
         >
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-text-dim">Delivering to</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-text-dim">{t("tracking.deliveringTo")}</p>
           <p className="mb-4 line-clamp-2 min-h-[2.5rem] text-sm text-text">
             {geocoding ? (
-              <span className="text-text-dim">Finding address…</span>
+              <span className="text-text-dim">{t("picker.findingAddress")}</span>
             ) : (
               addressGuess?.displayName ?? `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`
             )}
@@ -237,7 +250,7 @@ export function LocationPickerModal({
             onClick={() => onConfirm(center.lat, center.lng, addressGuess)}
             className="w-full rounded-xl bg-amber py-3.5 text-sm font-bold text-bg shadow-lg shadow-amber/20"
           >
-            Confirm this location
+            {t("picker.confirm")}
           </motion.button>
         </motion.div>
       </motion.div>

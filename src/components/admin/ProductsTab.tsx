@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
 
 type Product = Tables<"products">;
 
 export function ProductsTab() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState({ name: "", category: "", unit: "", price: "" });
   const [saving, setSaving] = useState(false);
@@ -40,11 +42,11 @@ export function ProductsTab() {
         body: JSON.stringify({ ...form, price: Number(form.price) }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed to add product");
+      if (!res.ok) throw new Error(json.error ?? t("admin.products.err.add"));
       setForm({ name: "", category: "", unit: "", price: "" });
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add product");
+      setError(err instanceof Error ? err.message : t("admin.products.err.add"));
     } finally {
       setSaving(false);
     }
@@ -58,7 +60,7 @@ export function ProductsTab() {
       body: JSON.stringify({ in_stock: !p.in_stock }),
     });
     if (!res.ok) {
-      setError("Couldn't update stock status");
+      setError(t("admin.products.err.stock"));
       return;
     }
     load();
@@ -68,7 +70,7 @@ export function ProductsTab() {
     setError(null);
     const res = await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
     if (!res.ok) {
-      setError("Couldn't delete that product");
+      setError(t("admin.products.err.delete"));
       return;
     }
     load();
@@ -77,32 +79,32 @@ export function ProductsTab() {
   return (
     <div className="grid grid-cols-1 gap-5 p-6 lg:grid-cols-[320px_1fr]">
       <section className="h-fit rounded-2xl border border-border bg-surface p-4">
-        <h2 className="mb-3 font-display text-sm font-semibold">Add product</h2>
+        <h2 className="mb-3 font-display text-sm font-semibold">{t("admin.products.addTitle")}</h2>
         {error && (
           <p className="mb-2.5 rounded-lg bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{error}</p>
         )}
         <form onSubmit={handleAdd} className="space-y-2.5">
           <input
-            placeholder="Name"
+            placeholder={t("admin.products.ph.name")}
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
           />
           <input
-            placeholder="Category (e.g. Dairy)"
+            placeholder={t("admin.products.ph.category")}
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
           />
           <input
-            placeholder="Unit (e.g. 500ml)"
+            placeholder={t("admin.products.ph.unit")}
             value={form.unit}
             onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
           />
           <input
             type="number"
-            placeholder="Price (₹)"
+            placeholder={t("admin.products.ph.price")}
             value={form.price}
             onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-amber"
@@ -113,13 +115,13 @@ export function ProductsTab() {
             disabled={saving}
             className="w-full rounded-lg bg-amber py-2.5 text-sm font-semibold text-bg disabled:opacity-50"
           >
-            {saving ? "Adding…" : "Add product"}
+            {saving ? t("admin.products.adding") : t("admin.products.addBtn")}
           </motion.button>
         </form>
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4">
-        <h2 className="mb-3 font-display text-sm font-semibold">Catalog ({products.length})</h2>
+        <h2 className="mb-3 font-display text-sm font-semibold">{t("admin.products.catalog", { count: products.length })}</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {products.map((p) => (
             <div key={p.id} className={`rounded-xl border border-border bg-surface-raised p-3 ${!p.in_stock ? "opacity-60" : ""}`}>
@@ -139,7 +141,7 @@ export function ProductsTab() {
                     p.in_stock ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
                   }`}
                 >
-                  {p.in_stock ? "In stock" : "Out of stock"}
+                  {p.in_stock ? t("admin.products.inStock") : t("shop.outOfStock")}
                 </button>
                 <button onClick={() => remove(p)} className="rounded-lg bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
                   Delete
@@ -147,7 +149,7 @@ export function ProductsTab() {
               </div>
             </div>
           ))}
-          {products.length === 0 && <p className="col-span-full py-8 text-center text-xs text-text-dim">No products yet.</p>}
+          {products.length === 0 && <p className="col-span-full py-8 text-center text-xs text-text-dim">{t("admin.products.empty")}</p>}
         </div>
       </section>
     </div>

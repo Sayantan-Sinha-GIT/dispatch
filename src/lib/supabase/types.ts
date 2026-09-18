@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          id: string
+          raw_command: string | null
+          source: string
+          summary: string | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          raw_command?: string | null
+          source?: string
+          summary?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          raw_command?: string | null
+          source?: string
+          summary?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
+      order_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          detail: string | null
+          event_type: string
+          id: string
+          order_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type: string
+          id?: string
+          order_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type?: string
+          id?: string
+          order_id?: string | null
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          admin_reply: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          message: string
+          order_id: string | null
+          resolved_at: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          message: string
+          order_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          admin_reply?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          message?: string
+          order_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -67,7 +169,7 @@ export type Database = {
           algorithm_used: string
           id: string
           run_at: string
-          run_by: string
+          run_by: string | null
           total_distance_after: number
           total_distance_before: number
         }
@@ -75,7 +177,7 @@ export type Database = {
           algorithm_used?: string
           id?: string
           run_at?: string
-          run_by: string
+          run_by?: string | null
           total_distance_after: number
           total_distance_before: number
         }
@@ -83,7 +185,7 @@ export type Database = {
           algorithm_used?: string
           id?: string
           run_at?: string
-          run_by?: string
+          run_by?: string | null
           total_distance_after?: number
           total_distance_before?: number
         }
@@ -102,6 +204,9 @@ export type Database = {
           accepted_at: string | null
           address: string
           assigned_rider_id: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           customer_id: string | null
           delivery_fee: number | null
@@ -110,6 +215,8 @@ export type Database = {
           lat: number
           lng: number
           offered_at: string | null
+          payout_amount: number | null
+          payout_distance_km: number | null
           raw_text: string
           sequence_in_route: number | null
           source: string
@@ -124,6 +231,9 @@ export type Database = {
           accepted_at?: string | null
           address: string
           assigned_rider_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           customer_id?: string | null
           delivery_fee?: number | null
@@ -132,6 +242,8 @@ export type Database = {
           lat: number
           lng: number
           offered_at?: string | null
+          payout_amount?: number | null
+          payout_distance_km?: number | null
           raw_text: string
           sequence_in_route?: number | null
           source?: string
@@ -146,6 +258,9 @@ export type Database = {
           accepted_at?: string | null
           address?: string
           assigned_rider_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           customer_id?: string | null
           delivery_fee?: number | null
@@ -154,6 +269,8 @@ export type Database = {
           lat?: number
           lng?: number
           offered_at?: string | null
+          payout_amount?: number | null
+          payout_distance_km?: number | null
           raw_text?: string
           sequence_in_route?: number | null
           source?: string
@@ -253,6 +370,9 @@ export type Database = {
           profile_id: string
           status: string
           suspended_until: string | null
+          total_declines: number
+          total_deliveries: number
+          total_earnings: number
           total_penalties: number
         }
         Insert: {
@@ -269,6 +389,9 @@ export type Database = {
           profile_id: string
           status?: string
           suspended_until?: string | null
+          total_declines?: number
+          total_deliveries?: number
+          total_earnings?: number
           total_penalties?: number
         }
         Update: {
@@ -285,6 +408,9 @@ export type Database = {
           profile_id?: string
           status?: string
           suspended_until?: string | null
+          total_declines?: number
+          total_deliveries?: number
+          total_earnings?: number
           total_penalties?: number
         }
         Relationships: [
@@ -303,17 +429,22 @@ export type Database = {
     }
     Functions: {
       accept_order: { Args: { order_id: string }; Returns: undefined }
+      cancel_my_order: { Args: { p_order_id: string }; Returns: Json }
       claim_order_for_rider: {
         Args: {
+          p_distance_km?: number
           p_from_status: string
           p_order_id: string
+          p_payout?: number
           p_rider_id: string
           p_sequence: number
         }
         Returns: boolean
       }
       current_rider_id: { Args: never; Returns: string }
+      decline_offer: { Args: { p_order_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
+      mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }
       register_missed_offer: {
         Args: {
           p_rider_id: string

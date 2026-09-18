@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
+import { OfferModal } from "@/components/rider/OfferModal";
 import { StatCounter } from "@/components/StatCounter";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useSweepPolling } from "@/lib/useSweepPolling";
@@ -17,9 +18,6 @@ import type { Tables } from "@/lib/supabase/types";
 type Order = Tables<"orders">;
 type Rider = Tables<"riders">;
 
-const OFFER_WINDOW_MS = 5 * 60 * 1000;
-const EARNING_BASE = 35;
-const EARNING_PER_KG = 12;
 
 export default function RiderDashboard() {
   const router = useRouter();
@@ -32,6 +30,7 @@ export default function RiderDashboard() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [accepting, setAccepting] = useState<string | null>(null);
+  const [declining, setDeclining] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -118,13 +117,17 @@ export default function RiderDashboard() {
     const nextStatus = rider.status === "active" ? "inactive" : "active";
     const { error } = await supabase.rpc("set_my_status", { new_status: nextStatus });
     if (error) {
-      setErrorMsg("Couldn't update your status — try again.");
+      setErrorMsg(t("rider.err.statusUpdate"));
       setTogglingStatus(false);
       return;
     }
     if (nextStatus === "inactive") {
       const res = await fetch("/api/rider/go-offline", { method: "POST" });
-      if (!res.ok) setErrorMsg("You're offline, but some deliveries may not have been handed back yet.");
+      if (!res.ok) setErrorMsg(t("rider.err.offlinePartial"));
+    } else {
+      // Coming online should surface waiting work immediately rather than
+      // leaving the rider idle until the next 20s poll.
+      await fetch("/api/offers/sweep", { method: "POST" }).catch(() => {});
     }
     await loadData();
     setTogglingStatus(false);
@@ -135,16 +138,34 @@ export default function RiderDashboard() {
     setErrorMsg(null);
     const { error } = await supabase.rpc("accept_order", { order_id: orderId });
     if (error) {
-      setErrorMsg("Too slow — that delivery just went to someone else.");
+      setErrorMsg(t("rider.err.tooSlow"));
     }
     await loadData();
     setAccepting(null);
   }
 
+  async function declineOrder(orderId: string) {
+    setDeclining(orderId);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/rider/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      if (!res.ok) setErrorMsg(t("rider.err.declineFailed"));
+    } catch {
+      setErrorMsg(t("rider.err.declineFailed"));
+    }
+    await loadData();
+    setDeclining(null);
+  }
+
   async function markDelivered(orderId: string) {
     setErrorMsg(null);
-    const { error } = await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
-    if (error) setErrorMsg("Couldn't mark that as delivered — try again.");
+    const { data, error } = await supabase.rpc("mark_order_delivered", { p_order_id: orderId });
+    const result = data as { ok?: boolean } | null;
+    if (error || !result?.ok) setErrorMsg(t("rider.err.markDelivered"));
     loadData();
   }
 
@@ -153,7 +174,7 @@ export default function RiderDashboard() {
   const done = orders.filter((o) => o.status === "delivered");
   const isActive = rider?.status === "active";
   const isSuspended = !!rider?.suspended_until && new Date(rider.suspended_until).getTime() > now;
-  const earnings = done.reduce((sum, o) => sum + EARNING_BASE + o.weight * EARNING_PER_KG, 0);
+  const earnings = done.reduce((sum, o) => sum + Number(o.payout_amount ?? 0), 0);
 
   return (
     <div className="relative min-h-screen pb-10">
@@ -162,6 +183,7 @@ export default function RiderDashboard() {
       <AnimatePresence>
         {errorMsg && (
           <motion.div
+            key="rider-error"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -185,7 +207,7 @@ export default function RiderDashboard() {
             </motion.span>
             <div>
               <p className="text-xs text-text-dim">{t("rider.welcomeBack")}</p>
-              <h1 className="font-display text-xl font-semibold">{name || "Rider"}</h1>
+              <h1 className="font-display text-xl font-semibold">{name || t("common.rider")}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -209,7 +231,7 @@ export default function RiderDashboard() {
           <div className="flex items-center gap-2.5">
             {isActive && <span className="h-2 w-2 animate-pulse rounded-full bg-success" />}
             <div>
-              <p className="text-xs uppercase tracking-wide text-text-dim">Status</p>
+              <p className="text-xs uppercase tracking-wide text-text-dim">{t("rider.statusLabel")}</p>
               <p className={`font-display text-lg font-semibold ${isActive ? "text-success" : "text-text-dim"}`}>
                 {isActive ? t("rider.online") : t("rider.offline")}
               </p>
@@ -236,9 +258,7 @@ export default function RiderDashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="relative mt-3 rounded-xl border border-danger/40 bg-danger/10 p-3 text-xs text-danger"
           >
-            Suspended from new offers until{" "}
-            {new Date(rider.suspended_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} due to
-            repeated missed deliveries.
+            {t("rider.suspendedUntil", { time: new Date(rider.suspended_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
           </motion.div>
         )}
 
@@ -249,16 +269,21 @@ export default function RiderDashboard() {
         </div>
       </header>
 
+      {/* One offer at a time, front and centre — a rider glancing at this
+          between stops shouldn't have to pick out of a list. */}
       <AnimatePresence>
-        {offered.map((order) => (
-          <OfferCard
-            key={order.id}
-            order={order}
+        {offered.length > 0 && (
+          <OfferModal
+            key={offered[0].id}
+            order={offered[0]}
             now={now}
-            onAccept={() => acceptOrder(order.id)}
-            accepting={accepting === order.id}
+            onAccept={() => acceptOrder(offered[0].id)}
+            onDecline={() => declineOrder(offered[0].id)}
+            accepting={accepting === offered[0].id}
+            declining={declining === offered[0].id}
+            queuedCount={offered.length - 1}
           />
-        ))}
+        )}
       </AnimatePresence>
 
       <div className="mx-4 mt-4 h-56 overflow-hidden rounded-2xl border border-border shadow-xl shadow-black/10">
@@ -309,7 +334,7 @@ export default function RiderDashboard() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{order.address}</p>
-              <p className="text-xs text-text-dim">{order.weight} kg</p>
+              <p className="text-xs text-text-dim">{order.weight} {t("common.kg")}</p>
             </div>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -349,7 +374,7 @@ export default function RiderDashboard() {
 
         {done.length > 0 && (
           <details className="pt-2">
-            <summary className="cursor-pointer text-xs text-text-dim">{done.length} delivered today</summary>
+            <summary className="cursor-pointer text-xs text-text-dim">{t("rider.deliveredToday", { count: done.length })}</summary>
             <div className="mt-2 space-y-1.5">
               {done.map((order) => (
                 <div
@@ -392,76 +417,5 @@ function RiderStat({
       </span>
       <p className="mt-0.5 text-[10px] uppercase tracking-wide text-text-dim">{label}</p>
     </div>
-  );
-}
-
-function OfferCard({
-  order,
-  now,
-  onAccept,
-  accepting,
-}: {
-  order: Order;
-  now: number;
-  onAccept: () => void;
-  accepting: boolean;
-}) {
-  const { t } = useLanguage();
-  const offeredAt = order.offered_at ? new Date(order.offered_at).getTime() : now;
-  const remainingMs = Math.max(0, offeredAt + OFFER_WINDOW_MS - now);
-  const remainingSec = Math.ceil(remainingMs / 1000);
-  const minutes = Math.floor(remainingSec / 60);
-  const seconds = remainingSec % 60;
-  const progress = Math.max(0, Math.min(1, remainingMs / OFFER_WINDOW_MS));
-  const circumference = 2 * Math.PI * 18;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -16, scale: 0.96 }}
-      animate={{
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        boxShadow: ["0 0 0 0 rgba(255,176,32,0.3)", "0 0 0 10px rgba(255,176,32,0)"],
-      }}
-      transition={{ boxShadow: { duration: 1.6, repeat: Infinity } }}
-      exit={{ opacity: 0, y: -16, scale: 0.96 }}
-      className="mx-4 mt-4 overflow-hidden rounded-2xl border-2 border-amber bg-gradient-to-br from-amber/15 via-surface to-surface p-4 shadow-2xl shadow-amber/10"
-    >
-      <div className="flex items-center gap-4">
-        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
-          <svg width="48" height="48" className="-rotate-90">
-            <circle cx="24" cy="24" r="18" stroke="#262d38" strokeWidth="4" fill="none" />
-            <circle
-              cx="24"
-              cy="24"
-              r="18"
-              stroke="#ffb020"
-              strokeWidth="4"
-              fill="none"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference * (1 - progress)}
-              strokeLinecap="round"
-            />
-          </svg>
-          <span className="absolute font-mono text-[10px] font-semibold text-amber">
-            {minutes}:{seconds.toString().padStart(2, "0")}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber">{t("rider.newRequest")}</p>
-          <p className="truncate text-sm font-semibold">{order.address}</p>
-          <p className="text-xs text-text-dim">{order.weight} kg</p>
-        </div>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={onAccept}
-          disabled={accepting}
-          className="shrink-0 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-bg disabled:opacity-60"
-        >
-          {accepting ? "…" : t("rider.accept")}
-        </motion.button>
-      </div>
-    </motion.div>
   );
 }

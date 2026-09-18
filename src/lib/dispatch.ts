@@ -1,63 +1,54 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { haversineDistanceKm } from "@/lib/routing/haversine";
+import { optimizeRoutes } from "@/lib/routing/optimizer";
+import { quotePayout } from "@/lib/pricing";
+import type { RoutingOrder, RoutingRider } from "@/lib/routing/types";
 import type { Database } from "@/lib/supabase/types";
 
-const OFFER_TIMEOUT_MS = 5 * 60 * 1000;
-const PENALTY_THRESHOLD = 3;
-const SUSPENSION_MINUTES = 30;
+export const OFFER_TIMEOUT_MS = 5 * 60 * 1000;
+export const PENALTY_THRESHOLD = 3;
+export const SUSPENSION_MINUTES = 30;
+/** How fresh a GPS ping must be to route from the rider's live position instead of their depot. */
+const LIVE_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
 
 type AdminClient = SupabaseClient<Database>;
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+type RiderRow = Database["public"]["Tables"]["riders"]["Row"];
 
-/** Finds the nearest eligible active rider (under capacity, not suspended, not excluded) for an order. */
-async function findReplacementRider(
+/** Where a rider is dispatched from right now: live GPS if recent, else their depot. */
+export function riderOrigin(rider: RiderRow) {
+  const fresh =
+    rider.location_updated_at &&
+    Date.now() - new Date(rider.location_updated_at).getTime() < LIVE_LOCATION_MAX_AGE_MS;
+
+  if (fresh && rider.current_lat != null && rider.current_lng != null) {
+    return { lat: rider.current_lat, lng: rider.current_lng };
+  }
+  return { lat: rider.depot_lat, lng: rider.depot_lng };
+}
+
+function isSuspended(rider: { suspended_until: string | null }) {
+  return !!rider.suspended_until && new Date(rider.suspended_until).getTime() > Date.now();
+}
+
+async function logOrderEvent(
   admin: AdminClient,
-  order: { lat: number; lng: number },
-  excludeRiderId: string,
+  orderId: string,
+  eventType: string,
+  actorRole: string,
+  detail: string,
+  actorId?: string | null,
 ) {
-  const { data: candidates } = await admin
-    .from("riders")
-    .select("*, profiles(name)")
-    .eq("status", "active")
-    .neq("id", excludeRiderId);
-
-  if (!candidates || candidates.length === 0) return null;
-
-  const eligible = candidates.filter(
-    (r) => !r.suspended_until || new Date(r.suspended_until).getTime() < Date.now(),
-  );
-  if (eligible.length === 0) return null;
-
-  const { data: openOrders } = await admin
-    .from("orders")
-    .select("assigned_rider_id")
-    .in("status", ["offered", "assigned"]);
-
-  const loadByRider = new Map<string, number>();
-  for (const o of openOrders ?? []) {
-    if (o.assigned_rider_id) {
-      loadByRider.set(o.assigned_rider_id, (loadByRider.get(o.assigned_rider_id) ?? 0) + 1);
-    }
-  }
-
-  const withCapacity = eligible.filter((r) => (loadByRider.get(r.id) ?? 0) < r.capacity);
-  if (withCapacity.length === 0) return null;
-
-  let best = withCapacity[0];
-  let bestDist = Infinity;
-  for (const rider of withCapacity) {
-    const from =
-      rider.current_lat != null && rider.current_lng != null
-        ? { lat: rider.current_lat, lng: rider.current_lng }
-        : { lat: rider.depot_lat, lng: rider.depot_lng };
-    const dist = haversineDistanceKm(from, order);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = rider;
-    }
-  }
-
-  return { rider: best, sequenceBase: loadByRider.get(best.id) ?? 0 };
+  const { error } = await admin.from("order_events").insert({
+    order_id: orderId,
+    event_type: eventType,
+    actor_role: actorRole,
+    actor_id: actorId ?? null,
+    detail,
+  });
+  // Audit writes must never break dispatch, but they must not vanish quietly
+  // either — a silent failure here is how a whole table stayed empty unnoticed.
+  if (error) console.error("order_events insert failed", error);
 }
 
 async function notify(
@@ -84,32 +75,86 @@ async function notifyAllAdmins(admin: AdminClient, type: string, title: string, 
   }
 }
 
+/** Active, unsuspended riders with their currently-open order count. */
+async function loadAvailableRiders(admin: AdminClient, excludeRiderId?: string) {
+  const { data: riders } = await admin
+    .from("riders")
+    .select("*, profiles(name)")
+    .eq("status", "active");
+
+  const eligible = (riders ?? []).filter(
+    (r) => !isSuspended(r) && (!excludeRiderId || r.id !== excludeRiderId),
+  );
+  if (eligible.length === 0) return { riders: [], loadByRider: new Map<string, number>() };
+
+  const { data: openOrders } = await admin
+    .from("orders")
+    .select("assigned_rider_id")
+    .in("status", ["offered", "assigned"]);
+
+  const loadByRider = new Map<string, number>();
+  for (const o of openOrders ?? []) {
+    if (o.assigned_rider_id) {
+      loadByRider.set(o.assigned_rider_id, (loadByRider.get(o.assigned_rider_id) ?? 0) + 1);
+    }
+  }
+
+  return { riders: eligible, loadByRider };
+}
+
+/** Finds the nearest eligible rider with spare capacity for a single order. */
+async function findReplacementRider(
+  admin: AdminClient,
+  order: { lat: number; lng: number },
+  excludeRiderId: string,
+) {
+  const { riders, loadByRider } = await loadAvailableRiders(admin, excludeRiderId || undefined);
+
+  const withCapacity = riders.filter((r) => (loadByRider.get(r.id) ?? 0) < r.capacity);
+  if (withCapacity.length === 0) return null;
+
+  let best = withCapacity[0];
+  let bestDist = Infinity;
+  for (const rider of withCapacity) {
+    const dist = haversineDistanceKm(riderOrigin(rider), order);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = rider;
+    }
+  }
+
+  return { rider: best, sequenceBase: loadByRider.get(best.id) ?? 0, distanceKm: bestDist };
+}
+
 /**
  * Claims `order` for `rider` via the `claim_order_for_rider` Postgres function,
- * which re-checks the rider's open-order count against capacity and performs
- * the status transition in one atomic, row-locked statement. This closes the
- * TOCTOU window between `findReplacementRider`'s capacity snapshot and the
- * write: two concurrent offers targeting the same rider (e.g. a fresh
- * checkout racing a sweep-triggered reassignment) serialize on the rider row
- * lock instead of both succeeding and pushing the rider over capacity.
+ * which re-checks capacity and performs the status transition in one atomic,
+ * row-locked statement. Two concurrent offers targeting the same rider serialize
+ * on the rider row lock instead of both succeeding.
  *
- * Returns false (without notifying anyone) if the order was no longer in
- * `fromStatus` (already claimed elsewhere) or the rider was already at
- * capacity by the time the lock was acquired — callers should treat that as
- * "this order needs to be picked up by the next sweep/optimize pass."
+ * The payout quote is persisted as part of the same claim, so the figure shown
+ * in the rider's offer popup is exactly what gets credited on delivery.
+ *
+ * Returns false (notifying nobody) if the order left `fromStatus` or the rider
+ * filled up first — callers should leave it for the next dispatch tick.
  */
 export async function offerOrderToRider(
   admin: AdminClient,
-  order: { id: string; address: string; lat: number; lng: number },
+  order: { id: string; address: string; lat: number; lng: number; weight: number },
   rider: { id: string; profile_id: string },
   sequence: number,
   fromStatus: string = "pending",
+  distanceKm?: number,
 ) {
+  const quote = quotePayout(order.weight, distanceKm ?? 0);
+
   const { data: claimed, error } = await admin.rpc("claim_order_for_rider", {
     p_order_id: order.id,
     p_rider_id: rider.id,
     p_sequence: sequence,
     p_from_status: fromStatus,
+    p_payout: quote.total,
+    p_distance_km: quote.distanceKm,
   });
 
   if (error) {
@@ -123,54 +168,108 @@ export async function offerOrderToRider(
     rider.profile_id,
     "delivery_offer",
     "New delivery request",
-    `${order.address} — accept within 5 minutes or it goes to another rider.`,
+    `${order.address} — ₹${quote.total} for ${quote.distanceKm} km. Accept within 5 minutes.`,
     order.id,
+  );
+  await logOrderEvent(
+    admin,
+    order.id,
+    "offered",
+    "system",
+    `Offered to a rider — ₹${quote.total} quoted for ${quote.distanceKm} km`,
   );
   return true;
 }
 
 /**
- * Offers a freshly placed customer order to the nearest eligible active rider
- * the moment it's placed, instead of waiting for the admin's batch "Optimize
- * routes" click. Leaves the order pending (with an admin nudge) if no rider
- * is currently free — the next optimize run or rider coming online will pick
- * it up via the existing pending-orders path.
+ * Runs the vehicle-routing optimizer across every pending order and every
+ * rider with spare capacity, then offers each computed stop.
+ *
+ * This is the single path by which orders reach riders — checkout, the periodic
+ * tick, a rider coming online and the admin's manual button all funnel through
+ * here, so every assignment is the product of the routing algorithm rather than
+ * a first-come-first-served grab.
  */
-export async function autoAssignOrder(admin: AdminClient, order: OrderRow) {
-  const replacement = await findReplacementRider(admin, order, "");
-  if (!replacement) {
-    await notifyAllAdmins(
-      admin,
-      "order_unassigned",
-      "New order needs a rider",
-      `"${order.address}" was placed but no rider is free right now — it's waiting in the pending pool.`,
-    );
-    return null;
+export async function assignPendingOrders(admin: AdminClient) {
+  const { data: pendingOrders } = await admin.from("orders").select("*").eq("status", "pending");
+  if (!pendingOrders || pendingOrders.length === 0) {
+    return { assigned: 0, considered: 0, totalDistanceKm: 0, baselineDistanceKm: 0, noRiders: false };
   }
-  const claimed = await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase);
-  if (!claimed) {
-    // Lost the race for this rider's last capacity slot — leave the order
-    // pending rather than reporting a rider that never actually got it.
-    await notifyAllAdmins(
-      admin,
-      "order_unassigned",
-      "New order needs a rider",
-      `"${order.address}" was placed but the nearest rider filled up first — it's waiting in the pending pool.`,
-    );
-    return null;
+
+  const { riders, loadByRider } = await loadAvailableRiders(admin);
+  const withCapacity = riders.filter((r) => (loadByRider.get(r.id) ?? 0) < r.capacity);
+
+  if (withCapacity.length === 0) {
+    return {
+      assigned: 0,
+      considered: pendingOrders.length,
+      totalDistanceKm: 0,
+      baselineDistanceKm: 0,
+      noRiders: true,
+    };
   }
-  return replacement.rider;
+
+  const routingOrders: RoutingOrder[] = pendingOrders.map((o) => ({
+    id: o.id,
+    lat: o.lat,
+    lng: o.lng,
+    weight: o.weight,
+  }));
+
+  // Capacity passed to the solver is *remaining* capacity, so riders already
+  // holding work don't get planned past their limit.
+  const routingRiders: RoutingRider[] = withCapacity.map((r) => {
+    const origin = riderOrigin(r);
+    return {
+      id: r.id,
+      capacity: r.capacity - (loadByRider.get(r.id) ?? 0),
+      depotLat: origin.lat,
+      depotLng: origin.lng,
+    };
+  });
+
+  const result = optimizeRoutes(routingOrders, routingRiders);
+  const ordersById = new Map(pendingOrders.map((o) => [o.id, o]));
+  const ridersById = new Map(withCapacity.map((r) => [r.id, r]));
+
+  let assigned = 0;
+  for (const route of result.routes) {
+    const rider = ridersById.get(route.riderId);
+    if (!rider) continue;
+    const origin = riderOrigin(rider);
+    const base = loadByRider.get(rider.id) ?? 0;
+
+    for (const stop of route.stops) {
+      const order = ordersById.get(stop.orderId);
+      if (!order) continue;
+      const distanceKm = haversineDistanceKm(origin, order);
+      const ok = await offerOrderToRider(
+        admin,
+        order,
+        rider,
+        base + stop.sequence,
+        "pending",
+        distanceKm,
+      );
+      if (ok) assigned += 1;
+    }
+  }
+
+  return {
+    assigned,
+    considered: pendingOrders.length,
+    totalDistanceKm: result.totalDistanceKm,
+    baselineDistanceKm: result.naiveBaselineDistanceKm,
+    noRiders: false,
+  };
 }
 
 /**
- * Processes orders stuck in "offered" past the acceptance window. Penalizes
- * the non-responding rider after repeated misses and hands the order to the
- * next nearest active rider, or back to the pending pool if none are free.
+ * Processes orders stuck in "offered" past the acceptance window. Penalizes the
+ * non-responding rider after repeated misses and returns the order to the pool.
  *
  * The claim step (offered -> expired) is a single atomic UPDATE...WHERE, so
- * concurrent sweep calls (each dashboard polls independently) can never both
- * grab the same order — whichever commits first flips the status out of
- * "offered" and the other's WHERE clause simply stops matching that row.
+ * concurrent ticks can never both grab the same order.
  */
 export async function sweepExpiredOffers(admin: AdminClient) {
   const cutoff = new Date(Date.now() - OFFER_TIMEOUT_MS).toISOString();
@@ -189,17 +288,34 @@ export async function sweepExpiredOffers(admin: AdminClient) {
 }
 
 /**
- * Immediately hands off a rider's still-unaccepted offers when they go
- * offline, without penalizing them (a deliberate status change isn't a miss).
- * Same atomic claim pattern as the timeout sweep.
+ * One dispatch cycle: retire stale offers, then re-plan every pending order.
+ * Called on checkout, when a rider comes online, on the dashboards' poll, and
+ * from the admin's manual re-optimize.
  */
-export async function reassignRiderPendingOffers(admin: AdminClient, riderId: string) {
-  const { data: claimed } = await admin
+export async function runDispatchTick(admin: AdminClient) {
+  const expired = await sweepExpiredOffers(admin);
+  const assignment = await assignPendingOrders(admin);
+  return { expired, ...assignment };
+}
+
+/**
+ * Immediately hands off a rider's still-unaccepted offers when they go offline
+ * or explicitly decline, without penalizing them.
+ */
+export async function reassignRiderPendingOffers(
+  admin: AdminClient,
+  riderId: string,
+  orderId?: string,
+) {
+  let query = admin
     .from("orders")
     .update({ status: "expired" })
     .eq("status", "offered")
-    .eq("assigned_rider_id", riderId)
-    .select("*");
+    .eq("assigned_rider_id", riderId);
+
+  if (orderId) query = query.eq("id", orderId);
+
+  const { data: claimed } = await query.select("*");
 
   for (const order of claimed ?? []) {
     await reassignOrExpire(admin, order, { penalize: false, excludeRiderId: riderId });
@@ -208,7 +324,8 @@ export async function reassignRiderPendingOffers(admin: AdminClient, riderId: st
   return claimed?.length ?? 0;
 }
 
-async function reassignOrExpire(
+/** Re-plans an order that has already been atomically moved out of "offered". */
+export async function reassignOrExpire(
   admin: AdminClient,
   order: OrderRow,
   opts: { penalize: boolean; excludeRiderId?: string },
@@ -255,7 +372,14 @@ async function reassignOrExpire(
     : await findReplacementRider(admin, order, "");
 
   const claimed = replacement
-    ? await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase, "expired")
+    ? await offerOrderToRider(
+        admin,
+        order,
+        replacement.rider,
+        replacement.sequenceBase,
+        "expired",
+        replacement.distanceKm,
+      )
     : false;
 
   if (claimed && replacement) {
@@ -283,4 +407,136 @@ async function reassignOrExpire(
       `"${order.address}" has no available rider right now and returned to pending.`,
     );
   }
+}
+
+/**
+ * Force-assigns an order to a specific rider, bypassing the optimizer. Used by
+ * the admin console ("send order X to rider Y") — capacity is still enforced by
+ * the claim function, so this can't silently overload someone.
+ */
+export async function forceAssignOrderToRider(
+  admin: AdminClient,
+  orderId: string,
+  riderId: string,
+) {
+  const { data: order } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
+  if (!order) return { ok: false as const, error: "Order not found" };
+  if (order.status === "delivered") return { ok: false as const, error: "Order is already delivered" };
+  if (order.status === "cancelled") return { ok: false as const, error: "Order is cancelled" };
+
+  const { data: rider } = await admin
+    .from("riders")
+    .select("*, profiles(name)")
+    .eq("id", riderId)
+    .maybeSingle();
+  if (!rider) return { ok: false as const, error: "Rider not found" };
+
+  const previousRiderId = order.assigned_rider_id;
+
+  // Park it in a neutral state first so the claim's from-status guard has a
+  // predictable starting point regardless of where the order was.
+  await admin
+    .from("orders")
+    .update({
+      status: "pending",
+      assigned_rider_id: null,
+      sequence_in_route: null,
+      offered_at: null,
+      accepted_at: null,
+    })
+    .eq("id", orderId);
+
+  const distanceKm = haversineDistanceKm(riderOrigin(rider), order);
+  const ok = await offerOrderToRider(
+    admin,
+    order,
+    rider,
+    0,
+    "pending",
+    distanceKm,
+  );
+
+  if (!ok) {
+    return { ok: false as const, error: "That rider is at capacity right now" };
+  }
+
+  if (previousRiderId && previousRiderId !== riderId) {
+    const { data: prev } = await admin
+      .from("riders")
+      .select("profile_id")
+      .eq("id", previousRiderId)
+      .maybeSingle();
+    if (prev?.profile_id) {
+      await notify(
+        admin,
+        prev.profile_id,
+        "order_reassigned_away",
+        "Delivery reassigned",
+        `An admin moved "${order.address}" to another rider.`,
+      );
+    }
+  }
+
+  const riderName = (rider as { profiles?: { name: string } }).profiles?.name ?? "a rider";
+  await logOrderEvent(admin, orderId, "force_assigned", "admin", `Force-assigned to ${riderName}`);
+
+  return { ok: true as const, riderName, address: order.address };
+}
+
+/** Admin-side cancellation — no time window, unlike the customer's 3-minute one. */
+export async function cancelOrderAsAdmin(admin: AdminClient, orderId: string, reason?: string) {
+  const { data: order } = await admin
+    .from("orders")
+    .select("*, riders(profile_id)")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { ok: false as const, error: "Order not found" };
+  if (order.status === "cancelled") return { ok: false as const, error: "Order is already cancelled" };
+
+  await admin
+    .from("orders")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: "admin",
+      cancel_reason: reason ?? null,
+      assigned_rider_id: null,
+      sequence_in_route: null,
+      offered_at: null,
+      accepted_at: null,
+    })
+    .eq("id", orderId);
+
+  const riderProfileId = (order.riders as { profile_id?: string } | null)?.profile_id;
+  if (riderProfileId) {
+    await notify(
+      admin,
+      riderProfileId,
+      "order_cancelled",
+      "Delivery cancelled",
+      `"${order.address}" was cancelled by an admin — no need to deliver it.`,
+    );
+  }
+  if (order.customer_id) {
+    await notify(
+      admin,
+      order.customer_id,
+      "order_cancelled",
+      "Your order was cancelled",
+      reason
+        ? `"${order.address}" was cancelled by support: ${reason}`
+        : `"${order.address}" was cancelled by support.`,
+      orderId,
+    );
+  }
+
+  await logOrderEvent(
+    admin,
+    orderId,
+    "cancelled",
+    "admin",
+    reason ? `Cancelled by admin — ${reason}` : "Cancelled by admin",
+  );
+
+  return { ok: true as const, address: order.address };
 }

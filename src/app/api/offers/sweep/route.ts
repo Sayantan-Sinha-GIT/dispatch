@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sweepExpiredOffers } from "@/lib/dispatch";
+import { runDispatchTick } from "@/lib/dispatch";
 
-// Polled periodically by both dashboards while open, since this app has no
-// standing background worker. Any signed-in user may trigger a sweep — it
-// only ever acts on orders that are already past their 5-minute window.
+// Polled periodically by every open dashboard, since this app has no standing
+// background worker. One tick retires offers past their 5-minute window and
+// re-plans the pending pool through the routing engine. Any signed-in user may
+// trigger it — it only ever acts on already-due work, never on their behalf.
 export async function POST() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ code: "not_signed_in", error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const processed = await sweepExpiredOffers(admin);
+  const result = await runDispatchTick(admin);
 
-  return NextResponse.json({ processed });
+  return NextResponse.json({ processed: result.expired, ...result });
 }

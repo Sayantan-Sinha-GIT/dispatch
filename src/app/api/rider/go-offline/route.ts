@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { reassignRiderPendingOffers } from "@/lib/dispatch";
+import { reassignRiderPendingOffers, runDispatchTick } from "@/lib/dispatch";
 
 // Called right after a rider flips to "inactive" so any delivery they
 // haven't accepted yet gets handed off immediately instead of waiting out
@@ -19,6 +19,7 @@ export async function POST() {
 
   const admin = createAdminClient();
   const processed = await reassignRiderPendingOffers(admin, rider.id);
+  await runDispatchTick(admin);
 
   return NextResponse.json({ processed });
 }

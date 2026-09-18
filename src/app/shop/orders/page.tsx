@@ -9,14 +9,7 @@ import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Finding a rider…",
-  offered: "Rider notified",
-  assigned: "On the way",
-  delivered: "Delivered",
-  expired: "Reassigning…",
-  failed: "Failed",
-};
+
 
 export default function ShopOrdersPage() {
   const { t } = useLanguage();
@@ -82,7 +75,7 @@ export default function ShopOrdersPage() {
                 </p>
               </div>
               <span className="rounded-full bg-amber/15 px-2.5 py-1 text-[10px] font-semibold uppercase text-amber">
-                {STATUS_LABEL[o.status] ?? o.status}
+                {t(`status.${o.status}`)}
               </span>
             </Link>
           </motion.div>
