@@ -40,6 +40,8 @@ export default function AdminDashboard() {
   const [now, setNow] = useState(() => Date.now());
   const [profileId, setProfileId] = useState<string | null>(null);
   const [tab, setTab] = useState<"dispatch" | "products" | "users">("dispatch");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useSweepPolling();
 
@@ -116,6 +118,29 @@ export default function AdminDashboard() {
       setMessage(err instanceof Error ? err.message : "Failed to parse orders");
     } finally {
       setParsing(false);
+    }
+  }
+
+  async function handleDeleteOrder(orderId: string) {
+    if (confirmDeleteId !== orderId) {
+      setConfirmDeleteId(orderId);
+      return;
+    }
+    setDeletingId(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      if (focusOrderId === orderId) {
+        setFocusOrderId(null);
+        setRawText("");
+      }
+      loadData();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to delete order");
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   }
 
@@ -386,24 +411,46 @@ export default function AdminDashboard() {
               {t("admin.orders")} ({orders.length})
             </h2>
             <div className="max-h-80 space-y-1.5 overflow-y-auto">
-              {orders.map((order) => (
-                <button
-                  key={order.id}
-                  onClick={() => {
-                    setFocusOrderId(order.id);
-                    setFocusRiderId(null);
-                    setRawText(order.raw_text);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
-                    focusOrderId === order.id
-                      ? "border-cyan/60 bg-cyan/10"
-                      : "border-transparent bg-surface-raised hover:border-cyan/30"
-                  }`}
-                >
-                  <span className="truncate pr-2">{order.address}</span>
-                  <StatusPill status={order.status} />
-                </button>
-              ))}
+              <AnimatePresence initial={false}>
+                {orders.map((order) => (
+                  <motion.div
+                    key={order.id}
+                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 text-xs transition-colors ${
+                      focusOrderId === order.id ? "border-cyan/60 bg-cyan/10" : "border-transparent bg-surface-raised"
+                    }`}
+                  >
+                    <button
+                      onClick={() => {
+                        setFocusOrderId(order.id);
+                        setFocusRiderId(null);
+                        setRawText(order.raw_text);
+                      }}
+                      className="flex min-w-0 flex-grow items-center justify-between gap-2 px-1.5 py-1 text-left hover:opacity-80"
+                    >
+                      <span className="truncate pr-2">{order.address}</span>
+                      <StatusPill status={order.status} />
+                    </button>
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleDeleteOrder(order.id)}
+                      onBlur={() => setConfirmDeleteId((id) => (id === order.id ? null : id))}
+                      disabled={deletingId === order.id}
+                      title={confirmDeleteId === order.id ? "Click again to confirm delete" : "Delete order"}
+                      className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
+                        confirmDeleteId === order.id
+                          ? "bg-danger text-white"
+                          : "text-text-dim hover:bg-danger/15 hover:text-danger"
+                      }`}
+                    >
+                      {deletingId === order.id ? "…" : confirmDeleteId === order.id ? "Confirm?" : "🗑"}
+                    </motion.button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               {orders.length === 0 && (
                 <p className="py-4 text-center text-xs text-text-dim">{t("admin.noOrders")}</p>
               )}
