@@ -52,7 +52,7 @@ export function LocationPickerModal({
         <div className="relative flex-grow overflow-hidden">
           <LocationPickerMap initialLat={initialLat} initialLng={initialLng} onChange={(lat, lng) => setCenter({ lat, lng })} flyToSignal={flyTo} />
 
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center">
             <motion.div
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
