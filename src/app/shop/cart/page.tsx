@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cartSubtotal, clearCart, getCart, setQty, type CartItem } from "@/lib/cart";
 import { LocationPickerModal } from "@/components/LocationPickerModal";
+import { useLanguage } from "@/components/LanguageProvider";
 
 const DELIVERY_FEE = 25;
 const DEFAULT_CENTER = { lat: 12.9716, lng: 77.5946 };
 
 export default function ShopCartPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [houseNo, setHouseNo] = useState("");
   const [street, setStreet] = useState("");
@@ -72,17 +74,19 @@ export default function ShopCartPage() {
         <Link href="/shop" className="text-text">
           ←
         </Link>
-        <h1 className="font-display text-lg font-semibold">Your cart</h1>
+        <h1 className="font-display text-lg font-semibold">{t("cart.title")}</h1>
       </header>
 
       <main className="mx-auto max-w-lg space-y-5 p-5">
         {cart.length === 0 ? (
-          <p className="py-16 text-center text-sm text-text-dim">Your cart is empty.</p>
+          <p className="py-16 text-center text-sm text-text-dim">{t("cart.empty")}</p>
         ) : (
           <div className="space-y-2.5">
             {cart.map((item) => (
-              <div
+              <motion.div
                 key={item.productId}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
               >
                 <div className="flex-grow">
@@ -90,44 +94,44 @@ export default function ShopCartPage() {
                   <p className="text-xs text-text-dim">₹{item.price} each</p>
                 </div>
                 <div className="flex items-center gap-2.5 rounded-lg bg-surface-raised px-2 py-1">
-                  <button onClick={() => setQty(item.productId, item.qty - 1)} className="px-1 text-sm">
+                  <button onClick={() => setQty(item.productId, item.qty - 1)} className="px-1.5 text-sm transition-transform active:scale-90">
                     −
                   </button>
-                  <span className="text-sm font-semibold">{item.qty}</span>
-                  <button onClick={() => setQty(item.productId, item.qty + 1)} className="px-1 text-sm">
+                  <span className="w-4 text-center text-sm font-semibold">{item.qty}</span>
+                  <button onClick={() => setQty(item.productId, item.qty + 1)} className="px-1.5 text-sm transition-transform active:scale-90">
                     +
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
 
         <section>
-          <h2 className="mb-2.5 font-display text-sm font-semibold">Delivery address</h2>
+          <h2 className="mb-2.5 font-display text-sm font-semibold">{t("cart.deliveryAddress")}</h2>
           <div className="space-y-2.5">
             <input
               value={houseNo}
               onChange={(e) => setHouseNo(e.target.value)}
-              placeholder="Flat / House no."
+              placeholder={t("cart.houseNo")}
               className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
             />
             <input
               value={street}
               onChange={(e) => setStreet(e.target.value)}
-              placeholder="Road / street name"
+              placeholder={t("cart.street")}
               className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
             />
             <input
               value={locality}
               onChange={(e) => setLocality(e.target.value)}
-              placeholder="Locality / area"
+              placeholder={t("cart.locality")}
               className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
             />
             <input
               value={landmark}
               onChange={(e) => setLandmark(e.target.value)}
-              placeholder="Nearest landmark (optional)"
+              placeholder={t("cart.landmark")}
               className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
             />
           </div>
@@ -141,30 +145,30 @@ export default function ShopCartPage() {
           >
             {coords ? (
               <>
-                📍 Location pinned{" "}
+                📍 {t("cart.locationPinned")}{" "}
                 <span className="font-mono text-[11px] opacity-70">
                   ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
                 </span>
               </>
             ) : (
-              "🗺️ Pin delivery location on map"
+              `🗺️ ${t("cart.pinOnMap")}`
             )}
           </motion.button>
         </section>
 
         {cart.length > 0 && (
           <section className="rounded-xl border border-border bg-surface p-4">
-            <h2 className="mb-3 font-display text-sm font-semibold">Order summary</h2>
+            <h2 className="mb-3 font-display text-sm font-semibold">{t("cart.orderSummary")}</h2>
             <div className="mb-2 flex justify-between text-sm text-text-dim">
-              <span>Subtotal</span>
+              <span>{t("cart.subtotal")}</span>
               <span className="text-text">₹{subtotal.toFixed(0)}</span>
             </div>
             <div className="mb-2 flex justify-between border-b border-dashed border-border pb-3 text-sm text-text-dim">
-              <span>Delivery fee</span>
+              <span>{t("cart.deliveryFee")}</span>
               <span className="text-text">₹{DELIVERY_FEE}</span>
             </div>
             <div className="flex justify-between text-base font-bold">
-              <span>Total</span>
+              <span>{t("cart.total")}</span>
               <span>₹{total.toFixed(0)}</span>
             </div>
           </section>
@@ -183,9 +187,9 @@ export default function ShopCartPage() {
             disabled={placing}
             className="mx-auto flex w-full max-w-lg items-center justify-center gap-2 rounded-xl bg-amber py-3.5 text-sm font-bold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {placing ? "Placing order…" : `Place order · ₹${total.toFixed(0)}`}
+            {placing ? t("cart.placing") : `${t("cart.placeOrder")} · ₹${total.toFixed(0)}`}
           </motion.button>
-          <p className="mt-2 text-center text-[11px] text-text-dim">Auto-assigned to the nearest available rider instantly</p>
+          <p className="mt-2 text-center text-[11px] text-text-dim">{t("cart.autoAssignNote")}</p>
         </div>
       )}
 
@@ -195,8 +199,13 @@ export default function ShopCartPage() {
             initialLat={coords?.lat ?? DEFAULT_CENTER.lat}
             initialLng={coords?.lng ?? DEFAULT_CENTER.lng}
             onClose={() => setPickerOpen(false)}
-            onConfirm={(lat, lng) => {
+            onConfirm={(lat, lng, guess) => {
               setCoords({ lat, lng });
+              if (guess) {
+                if (!houseNo && guess.houseNo) setHouseNo(guess.houseNo);
+                if (!street && guess.street) setStreet(guess.street);
+                if (!locality && guess.locality) setLocality(guess.locality);
+              }
               setPickerOpen(false);
             }}
           />

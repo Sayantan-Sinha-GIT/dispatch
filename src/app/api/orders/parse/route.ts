@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
-  const { rawText } = await request.json();
+  const { rawText, editOrderId } = await request.json();
   if (!rawText || typeof rawText !== "string") {
     return NextResponse.json({ error: "rawText is required" }, { status: 400 });
   }
@@ -38,6 +38,32 @@ export async function POST(request: NextRequest) {
       time_window_end: sanitizeTime(o.time_window_end),
       status: "pending" as const,
     }));
+
+    // Re-parsing a tagged order's text (e.g. after fixing a typo) must edit that
+    // order in place, not insert a second copy of it alongside the original.
+    if (editOrderId && rows.length > 0) {
+      const [primary, ...rest] = rows;
+      const { data: updated, error: updateError } = await supabase
+        .from("orders")
+        .update({
+          ...primary,
+          assigned_rider_id: null,
+          sequence_in_route: null,
+          offered_at: null,
+          accepted_at: null,
+        })
+        .eq("id", editOrderId)
+        .select();
+      if (updateError) throw updateError;
+
+      let inserted: typeof updated = [];
+      if (rest.length > 0) {
+        const { data, error } = await supabase.from("orders").insert(rest).select();
+        if (error) throw error;
+        inserted = data;
+      }
+      return NextResponse.json({ orders: [...(updated ?? []), ...inserted] });
+    }
 
     const { data, error } = await supabase.from("orders").insert(rows).select();
     if (error) throw error;

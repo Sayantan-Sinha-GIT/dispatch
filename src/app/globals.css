@@ -18,6 +18,20 @@
   --font-mono: var(--font-jetbrains-mono);
 }
 
+:root[data-theme="light"] {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-raised: #eef0f4;
+  --border: #dde1e8;
+  --text: #14171f;
+  --text-dim: #5b6472;
+  --amber: #c97b0a;
+  --amber-dim: #f0d9ae;
+  --cyan: #0f8f82;
+  --danger: #d92d4f;
+  --success: #1a8f63;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -47,7 +61,11 @@ h1, h2, h3, h4, .font-display {
 
 ::selection {
   background: var(--amber);
-  color: #0a0d12;
+  color: var(--bg);
+}
+
+body {
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .leaflet-container {

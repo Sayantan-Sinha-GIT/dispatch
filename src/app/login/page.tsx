@@ -6,14 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { AuthBackground } from "@/components/AuthBackground";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Role = "customer" | "rider" | "admin";
-
-const ROLE_META: Record<Role, { label: string; tagline: string; accent: "amber" | "cyan" }> = {
-  customer: { label: "Customer", tagline: "Order groceries from nearby stores", accent: "amber" },
-  rider: { label: "Rider", tagline: "Sign in to see today's requests", accent: "cyan" },
-  admin: { label: "Admin", tagline: "Dispatch command center", accent: "amber" },
-};
 
 function GoogleIcon() {
   return (
@@ -37,6 +34,7 @@ export default function LoginPage() {
 function UnifiedLogin() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const initialRole = (searchParams.get("role") as Role) ?? "customer";
   const [role, setRole] = useState<Role>(["customer", "rider", "admin"].includes(initialRole) ? initialRole : "customer");
   const [step, setStep] = useState<"form" | "verify">("form");
@@ -48,6 +46,12 @@ function UnifiedLogin() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const ROLE_META: Record<Role, { label: string; tagline: string; accent: "amber" | "cyan" }> = {
+    customer: { label: t("login.tab.customer"), tagline: t("login.tagline.customer"), accent: "amber" },
+    rider: { label: t("login.tab.rider"), tagline: t("login.tagline.rider"), accent: "cyan" },
+    admin: { label: t("login.tab.admin"), tagline: t("login.tagline.admin"), accent: "amber" },
+  };
 
   const meta = ROLE_META[role];
 
@@ -166,6 +170,11 @@ function UnifiedLogin() {
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <AuthBackground accent={meta.accent} />
 
+      <div className="absolute right-4 top-4 z-10 flex gap-2">
+        <LanguageToggle />
+        <ThemeToggle />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -218,22 +227,22 @@ function UnifiedLogin() {
                   className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   <GoogleIcon />
-                  {googleLoading ? "Redirecting…" : "Continue with Google"}
+                  {googleLoading ? "Redirecting…" : t("login.google")}
                 </motion.button>
-                <Divider />
+                <Divider label={t("login.orEmail")} />
                 <form onSubmit={handleCustomerContinue} className="space-y-4">
-                  <FormField label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" accent="amber" />
+                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder="you@example.com" accent="amber" />
                   <ErrorNotice error={error} />
-                  <SubmitButton loading={loading} accent="amber" label="Continue with email" loadingLabel="Sending code…" />
+                  <SubmitButton loading={loading} accent="amber" label={t("login.continueEmail")} loadingLabel={t("login.sendingCode")} />
                 </form>
-                <p className="mt-4 text-center text-[11px] text-text-dim">We&apos;ll email you a 6-digit code — no password needed.</p>
+                <p className="mt-4 text-center text-[11px] text-text-dim">{t("login.otpHint")}</p>
               </>
             )}
 
             {role === "customer" && step === "verify" && (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <p className="text-xs text-text-dim">
-                  Enter the 6-digit code sent to <span className="text-text">{email}</span>.
+                  {t("login.verifyHint")} <span className="text-text">{email}</span>.
                 </p>
                 <input
                   required
@@ -245,9 +254,9 @@ function UnifiedLogin() {
                   placeholder="——————"
                 />
                 <ErrorNotice error={error} />
-                <SubmitButton loading={loading} accent="amber" label="Verify & continue" loadingLabel="Verifying…" disabled={code.length < 6} />
+                <SubmitButton loading={loading} accent="amber" label={t("login.verifyBtn")} loadingLabel={t("login.verifying")} disabled={code.length < 6} />
                 <button type="button" onClick={() => setStep("form")} className="w-full text-center text-xs text-text-dim hover:text-text">
-                  ← Use a different email
+                  {t("login.useOtherEmail")}
                 </button>
               </form>
             )}
@@ -262,19 +271,19 @@ function UnifiedLogin() {
                   className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   <GoogleIcon />
-                  {googleLoading ? "Redirecting…" : "Continue with Google"}
+                  {googleLoading ? "Redirecting…" : t("login.google")}
                 </motion.button>
-                <Divider />
+                <Divider label={t("login.orEmail")} />
                 <form onSubmit={handleRiderSubmit} className="space-y-4">
-                  <FormField label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" accent="cyan" />
-                  <FormField label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
+                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder="you@example.com" accent="cyan" />
+                  <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
                   <ErrorNotice error={error} />
-                  <SubmitButton loading={loading} accent="cyan" label="Sign in" loadingLabel="Signing in…" />
+                  <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
                 </form>
                 <p className="mt-4 text-center text-xs text-text-dim">
-                  New rider?{" "}
+                  {t("login.newRider")}{" "}
                   <Link href="/rider/signup" className="text-cyan hover:underline">
-                    Sign up
+                    {t("login.signUp")}
                   </Link>
                 </p>
               </>
@@ -282,10 +291,10 @@ function UnifiedLogin() {
 
             {role === "admin" && (
               <form onSubmit={handleAdminSubmit} className="space-y-4">
-                <FormField label="Email" type="email" value={email} onChange={setEmail} placeholder="you@dispatch.io" accent="amber" />
-                <FormField label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder="you@dispatch.io" accent="amber" />
+                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
                 <ErrorNotice error={error} />
-                <SubmitButton loading={loading} accent="amber" label="Sign in" loadingLabel="Signing in…" />
+                <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
               </form>
             )}
           </motion.div>
@@ -297,11 +306,11 @@ function UnifiedLogin() {
   );
 }
 
-function Divider() {
+function Divider({ label }: { label: string }) {
   return (
     <div className="mb-4 flex items-center gap-3 text-[10px] uppercase tracking-wide text-text-dim">
       <div className="h-px flex-grow bg-border" />
-      or with email
+      {label}
       <div className="h-px flex-grow bg-border" />
     </div>
   );

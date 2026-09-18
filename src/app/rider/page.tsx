@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { StatCounter } from "@/components/StatCounter";
 import { useSweepPolling } from "@/lib/useSweepPolling";
 import type { Tables } from "@/lib/supabase/types";
@@ -145,6 +147,8 @@ export default function RiderDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
             {profileId && <NotificationBell profileId={profileId} accent="cyan" />}
             <button
               onClick={handleSignOut}

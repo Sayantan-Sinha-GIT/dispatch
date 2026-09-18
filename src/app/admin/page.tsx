@@ -11,6 +11,8 @@ import { useSweepPolling } from "@/lib/useSweepPolling";
 import { ROUTE_COLORS } from "@/lib/routeColors";
 import { ProductsTab } from "@/components/admin/ProductsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -99,12 +101,13 @@ export default function AdminDashboard() {
       const res = await fetch("/api/orders/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText }),
+        body: JSON.stringify({ rawText, editOrderId: focusOrderId ?? undefined }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMessage(`Added ${json.orders.length} order(s).`);
+      setMessage(focusOrderId ? "Order updated." : `Added ${json.orders.length} order(s).`);
       setRawText("");
+      setFocusOrderId(null);
       loadData();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to parse orders");
@@ -153,6 +156,8 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
             {profileId && <NotificationBell profileId={profileId} accent="amber" />}
             <button
               onClick={handleSignOut}
@@ -224,7 +229,7 @@ export default function AdminDashboard() {
           <section className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-1.5 font-display text-sm font-semibold">
-                <span>✨</span> Add orders
+                <span>✨</span> {focusOrderId ? "Edit tagged order" : "Add orders"}
               </h2>
               {focusOrderId && (
                 <button
@@ -244,14 +249,16 @@ export default function AdminDashboard() {
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder="Paste messy order text, e.g. '2kg parcel to 12 MG Road, Bangalore, deliver between 2-4pm; also one to Koramangala 5th block...'"
                 rows={5}
-                className="w-full resize-none rounded-lg border border-border bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-amber"
+                className={`w-full resize-none rounded-lg border bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-amber ${
+                  focusOrderId ? "border-cyan/40" : "border-border"
+                }`}
               />
               <button
                 type="submit"
                 disabled={parsing}
                 className="w-full rounded-lg bg-gradient-to-r from-amber to-amber/80 py-2.5 text-sm font-semibold text-bg shadow-lg shadow-amber/20 transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                {parsing ? "Parsing…" : "Parse with Gemini"}
+                {parsing ? "Parsing…" : focusOrderId ? "Update this order with Gemini" : "Parse with Gemini"}
               </button>
             </form>
           </section>

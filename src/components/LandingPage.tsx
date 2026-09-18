@@ -4,36 +4,39 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import { StatCounter } from "@/components/StatCounter";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/components/LanguageProvider";
 
 const NAV_LINKS = [
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#roles", label: "Get started" },
-  { href: "#features", label: "Features" },
-];
+  { href: "#how-it-works", key: "nav.howItWorks" },
+  { href: "#roles", key: "nav.getStarted" },
+  { href: "#features", key: "nav.features" },
+] as const;
 
 const ROLES = [
   {
     key: "customer",
     accent: "amber",
-    title: "Order groceries",
-    desc: "Browse a curated catalog and get it delivered by the nearest available rider — often before you'd finish a supermarket queue.",
-    cta: "Start shopping",
+    titleKey: "roles.customer.title",
+    descKey: "roles.customer.desc",
+    ctaKey: "roles.customer.cta",
     icon: "🛒",
   },
   {
     key: "rider",
     accent: "cyan",
-    title: "Deliver & earn",
-    desc: "Go active, get offered nearby drops, accept in one tap. You control your hours — flip online whenever you're free.",
-    cta: "Become a rider",
+    titleKey: "roles.rider.title",
+    descKey: "roles.rider.desc",
+    ctaKey: "roles.rider.cta",
     icon: "🛵",
   },
   {
     key: "admin",
     accent: "amber",
-    title: "Run dispatch",
-    desc: "Bulk-import orders, watch a live optimized route map, and let the engine auto-reassign anything a rider misses.",
-    cta: "Admin console",
+    titleKey: "roles.admin.title",
+    descKey: "roles.admin.desc",
+    ctaKey: "roles.admin.cta",
     icon: "📡",
   },
 ] as const;
@@ -67,6 +70,7 @@ function GradientBlob({ className, color }: { className: string; color: string }
 
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const { t } = useLanguage();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", onScroll);
@@ -92,22 +96,27 @@ function Nav() {
         <div className="hidden items-center gap-8 sm:flex">
           {NAV_LINKS.map((l) => (
             <a key={l.href} href={l.href} className="text-sm text-text-dim transition-colors hover:text-text">
-              {l.label}
+              {t(l.key)}
             </a>
           ))}
         </div>
-        <Link
-          href="/login"
-          className="rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
-        >
-          Sign in
-        </Link>
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <ThemeToggle />
+          <Link
+            href="/login"
+            className="rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
+          >
+            {t("nav.signIn")}
+          </Link>
+        </div>
       </div>
     </motion.nav>
   );
 }
 
 function Hero() {
+  const { t } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0.5);
   const my = useMotionValue(0.5);
@@ -180,7 +189,7 @@ function Hero() {
           className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3.5 py-1.5 text-xs text-text-dim backdrop-blur"
         >
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-          Live route optimization, running right now
+          {t("hero.badge")}
         </motion.div>
 
         <motion.h1
@@ -189,11 +198,11 @@ function Hero() {
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
           className="max-w-3xl font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl"
         >
-          Groceries there{" "}
+          {t("hero.title1")}{" "}
           <span className="bg-gradient-to-r from-amber via-amber to-cyan bg-[length:200%_auto] bg-clip-text text-transparent [animation:gradient-shift_6s_ease_infinite]">
-            before you've unpacked
+            {t("hero.title2")}
           </span>{" "}
-          the car.
+          {t("hero.title3")}
         </motion.h1>
 
         <motion.p
@@ -202,8 +211,7 @@ function Hero() {
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.25 }}
           className="mt-6 max-w-xl text-base text-text-dim sm:text-lg"
         >
-          Dispatch pairs a real vehicle-routing engine with a gig-style rider network — instant order matching,
-          live tracking, and a dispatch console built for people who actually run logistics.
+          {t("hero.subtitle")}
         </motion.p>
 
         <motion.div
@@ -216,19 +224,19 @@ function Hero() {
             href="/login?role=customer"
             className="rounded-xl bg-amber px-6 py-3.5 text-sm font-bold text-bg shadow-lg shadow-amber/20 transition-transform hover:scale-[1.03]"
           >
-            Order now →
+            {t("hero.orderNow")}
           </Link>
           <Link
             href="/login?role=rider"
             className="rounded-xl border border-cyan/40 bg-cyan/10 px-6 py-3.5 text-sm font-bold text-cyan transition-transform hover:scale-[1.03]"
           >
-            Become a rider
+            {t("hero.becomeRider")}
           </Link>
           <a
             href="#how-it-works"
             className="rounded-xl border border-border px-6 py-3.5 text-sm font-semibold text-text-dim transition-colors hover:text-text"
           >
-            See how it works ↓
+            {t("hero.seeHow")}
           </a>
         </motion.div>
 
@@ -238,9 +246,9 @@ function Hero() {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="mt-16 grid max-w-2xl grid-cols-3 gap-6 border-t border-border pt-8"
         >
-          <Stat value={5} suffix=" min" decimals={0} label="Accept window before reassignment" />
-          <Stat value={3} suffix="×" decimals={0} label="Portals — customer, rider, admin" />
-          <Stat value={2} suffix="-opt" decimals={0} label="Route optimization pass" />
+          <Stat value={5} suffix=" min" decimals={0} label={t("hero.stat1")} />
+          <Stat value={3} suffix="×" decimals={0} label={t("hero.stat2")} />
+          <Stat value={2} suffix="-opt" decimals={0} label={t("hero.stat3")} />
         </motion.div>
       </div>
     </section>
@@ -257,9 +265,10 @@ function Stat({ value, suffix, decimals, label }: { value: number; suffix: strin
 }
 
 function RoleCards() {
+  const { t } = useLanguage();
   return (
     <section id="roles" className="relative mx-auto max-w-6xl px-6 py-28">
-      <SectionHeading eyebrow="Three ways in" title="Built for everyone in the loop" />
+      <SectionHeading eyebrow={t("roles.eyebrow")} title={t("roles.title")} />
       <div className="mt-14 grid gap-5 sm:grid-cols-3">
         {ROLES.map((role, i) => (
           <motion.div
@@ -279,15 +288,15 @@ function RoleCards() {
               } opacity-0`}
             />
             <span className="text-4xl">{role.icon}</span>
-            <h3 className="mt-5 font-display text-xl font-bold">{role.title}</h3>
-            <p className="mt-2.5 text-sm leading-relaxed text-text-dim">{role.desc}</p>
+            <h3 className="mt-5 font-display text-xl font-bold">{t(role.titleKey)}</h3>
+            <p className="mt-2.5 text-sm leading-relaxed text-text-dim">{t(role.descKey)}</p>
             <Link
               href={`/login?role=${role.key}`}
               className={`mt-6 inline-flex items-center gap-1.5 text-sm font-semibold transition-transform group-hover:translate-x-1 ${
                 role.accent === "amber" ? "text-amber" : "text-cyan"
               }`}
             >
-              {role.cta} →
+              {t(role.ctaKey)} →
             </Link>
           </motion.div>
         ))}
@@ -297,9 +306,10 @@ function RoleCards() {
 }
 
 function HowItWorks() {
+  const { t } = useLanguage();
   return (
     <section id="how-it-works" className="relative mx-auto max-w-4xl px-6 py-28">
-      <SectionHeading eyebrow="Under the hood" title="How the dispatch engine works" />
+      <SectionHeading eyebrow={t("how.eyebrow")} title={t("how.title")} />
       <div className="relative mt-16 space-y-12 pl-8 sm:pl-10">
         <motion.div
           className="absolute bottom-4 left-[11px] top-4 w-px bg-gradient-to-b from-amber via-cyan to-transparent sm:left-[15px]"
@@ -332,9 +342,10 @@ function HowItWorks() {
 }
 
 function Features() {
+  const { t } = useLanguage();
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-6 py-28">
-      <SectionHeading eyebrow="Everything included" title="Production-grade, not a prototype" />
+      <SectionHeading eyebrow={t("features.eyebrow")} title={t("features.title")} />
       <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f, i) => (
           <motion.div
@@ -445,6 +456,7 @@ function LiveConsolePreview() {
 }
 
 function FinalCta() {
+  const { t } = useLanguage();
   return (
     <section className="relative mx-auto max-w-5xl px-6 py-28">
       <motion.div
@@ -455,19 +467,17 @@ function FinalCta() {
         className="relative overflow-hidden rounded-3xl border border-amber/20 bg-gradient-to-br from-amber/10 via-surface to-cyan/10 p-12 text-center sm:p-16"
       >
         <GradientBlob className="left-1/2 top-0 h-64 w-64 -translate-x-1/2" color="rgba(255,176,32,0.15)" />
-        <h2 className="relative font-display text-3xl font-bold sm:text-4xl">Ready to move faster?</h2>
-        <p className="relative mx-auto mt-3 max-w-md text-sm text-text-dim">
-          Whichever side of the delivery you're on, it starts with one sign-in.
-        </p>
+        <h2 className="relative font-display text-3xl font-bold sm:text-4xl">{t("cta.title")}</h2>
+        <p className="relative mx-auto mt-3 max-w-md text-sm text-text-dim">{t("cta.subtitle")}</p>
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/login?role=customer" className="rounded-xl bg-amber px-6 py-3.5 text-sm font-bold text-bg transition-transform hover:scale-[1.03]">
-            Order now
+            {t("hero.orderNow").replace(" →", "")}
           </Link>
           <Link href="/login?role=rider" className="rounded-xl border border-cyan/40 bg-cyan/10 px-6 py-3.5 text-sm font-bold text-cyan transition-transform hover:scale-[1.03]">
-            Become a rider
+            {t("hero.becomeRider")}
           </Link>
           <Link href="/login?role=admin" className="rounded-xl border border-border px-6 py-3.5 text-sm font-semibold text-text-dim transition-colors hover:text-text">
-            Admin console
+            {t("roles.admin.cta")}
           </Link>
         </div>
       </motion.div>
@@ -476,17 +486,18 @@ function FinalCta() {
 }
 
 function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="border-t border-border px-6 py-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-amber font-display text-xs font-bold text-bg">D</span>
-          <span className="text-sm text-text-dim">© {new Date().getFullYear()} Dispatch</span>
+          <span className="text-sm text-text-dim">© {new Date().getFullYear()} {t("footer.rights")}</span>
         </div>
         <div className="flex gap-6 text-xs text-text-dim">
-          <a href="#how-it-works" className="hover:text-text">How it works</a>
-          <a href="#features" className="hover:text-text">Features</a>
-          <Link href="/login" className="hover:text-text">Sign in</Link>
+          <a href="#how-it-works" className="hover:text-text">{t("nav.howItWorks")}</a>
+          <a href="#features" className="hover:text-text">{t("nav.features")}</a>
+          <Link href="/login" className="hover:text-text">{t("nav.signIn")}</Link>
         </div>
       </div>
     </footer>

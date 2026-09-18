@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -8,6 +8,49 @@ const LocationPickerMap = dynamic(() => import("./LocationPickerMap").then((m) =
   ssr: false,
   loading: () => <div className="flex h-full w-full items-center justify-center bg-surface text-sm text-text-dim">Loading map…</div>,
 });
+
+export type AddressGuess = {
+  houseNo?: string;
+  street?: string;
+  locality?: string;
+  displayName: string;
+};
+
+type Suggestion = { label: string; lat: number; lng: number };
+
+async function reverseGeocode(lat: number, lng: number): Promise<AddressGuess | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const a = json.address ?? {};
+    return {
+      houseNo: a.house_number,
+      street: a.road,
+      locality: a.suburb || a.neighbourhood || a.city_district || a.village || a.town || a.city,
+      displayName: json.display_name ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function searchPlaces(q: string): Promise<Suggestion[]> {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&limit=5`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json as { display_name: string; lat: string; lon: string }[]).map((r) => ({
+      label: r.display_name,
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+    }));
+  } catch {
+    return [];
+  }
+}
 
 export function LocationPickerModal({
   initialLat,
@@ -17,13 +60,20 @@ export function LocationPickerModal({
 }: {
   initialLat: number;
   initialLng: number;
-  onConfirm: (lat: number, lng: number) => void;
+  onConfirm: (lat: number, lng: number, guess: AddressGuess | null) => void;
   onClose: () => void;
 }) {
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; token: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addressGuess, setAddressGuess] = useState<AddressGuess | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const geocodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function useMyLocation() {
     setLocating(true);
@@ -41,6 +91,37 @@ export function LocationPickerModal({
     );
   }
 
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      const results = await searchPlaces(value);
+      setSuggestions(results);
+      setSearching(false);
+    }, 400);
+  }
+
+  function handleCenterChange(lat: number, lng: number) {
+    setCenter({ lat, lng });
+    if (geocodeDebounceRef.current) clearTimeout(geocodeDebounceRef.current);
+    setGeocoding(true);
+    geocodeDebounceRef.current = setTimeout(async () => {
+      const guess = await reverseGeocode(lat, lng);
+      setAddressGuess(guess);
+      setGeocoding(false);
+    }, 600);
+  }
+
+  useEffect(() => {
+    handleCenterChange(initialLat, initialLng);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <AnimatePresence>
       <motion.div
@@ -50,7 +131,7 @@ export function LocationPickerModal({
         className="fixed inset-0 z-[2000] flex flex-col bg-bg"
       >
         <div className="relative flex-grow overflow-hidden">
-          <LocationPickerMap initialLat={initialLat} initialLng={initialLng} onChange={(lat, lng) => setCenter({ lat, lng })} flyToSignal={flyTo} />
+          <LocationPickerMap initialLat={initialLat} initialLng={initialLng} onChange={handleCenterChange} flyToSignal={flyTo} />
 
           <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center">
             <motion.div
@@ -70,19 +151,57 @@ export function LocationPickerModal({
             </motion.div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute left-4 top-4 z-[1000] flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface/90 text-text backdrop-blur"
-          >
-            ←
-          </button>
+          <div className="absolute inset-x-0 top-0 z-[1000] flex items-start gap-2 p-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface/95 text-text shadow-lg backdrop-blur"
+            >
+              ←
+            </button>
+            <div className="relative flex-grow">
+              <input
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                placeholder="Search for area, street, landmark…"
+                className="w-full rounded-full border border-border bg-surface/95 px-4 py-3 text-sm shadow-lg outline-none backdrop-blur focus:border-amber"
+              />
+              {searching && (
+                <span className="absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-amber border-t-transparent" />
+              )}
+              <AnimatePresence>
+                {suggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+                  >
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setFlyTo({ lat: s.lat, lng: s.lng, token: Date.now() });
+                          setQuery(s.label);
+                          setSuggestions([]);
+                        }}
+                        className="block w-full border-b border-border px-4 py-2.5 text-left text-xs text-text-dim last:border-0 hover:bg-surface-raised hover:text-text"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
 
           <button
             type="button"
             onClick={useMyLocation}
             disabled={locating}
-            className="absolute right-4 top-4 z-[1000] flex items-center gap-2 rounded-full border border-amber/40 bg-surface/90 px-3.5 py-2.5 text-xs font-semibold text-amber backdrop-blur disabled:opacity-50"
+            className="absolute bottom-4 right-4 z-[1000] flex items-center gap-2 rounded-full border border-amber/40 bg-surface/90 px-3.5 py-2.5 text-xs font-semibold text-amber shadow-lg backdrop-blur disabled:opacity-50"
           >
             {locating ? (
               <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber border-t-transparent" />
@@ -93,7 +212,7 @@ export function LocationPickerModal({
           </button>
 
           {error && (
-            <p className="absolute left-1/2 top-20 z-[1000] max-w-xs -translate-x-1/2 rounded-lg border border-danger/30 bg-surface/95 px-3 py-2 text-center text-xs text-danger backdrop-blur">
+            <p className="absolute left-1/2 top-24 z-[1000] max-w-xs -translate-x-1/2 rounded-lg border border-danger/30 bg-surface/95 px-3 py-2 text-center text-xs text-danger backdrop-blur">
               {error}
             </p>
           )}
@@ -105,13 +224,17 @@ export function LocationPickerModal({
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="border-t border-border bg-surface p-5"
         >
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-text-dim">Drag the map to move the pin</p>
-          <p className="mb-4 font-mono text-xs text-text-dim">
-            {center.lat.toFixed(5)}, {center.lng.toFixed(5)}
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-text-dim">Delivering to</p>
+          <p className="mb-4 line-clamp-2 min-h-[2.5rem] text-sm text-text">
+            {geocoding ? (
+              <span className="text-text-dim">Finding address…</span>
+            ) : (
+              addressGuess?.displayName ?? `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`
+            )}
           </p>
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => onConfirm(center.lat, center.lng)}
+            onClick={() => onConfirm(center.lat, center.lng, addressGuess)}
             className="w-full rounded-xl bg-amber py-3.5 text-sm font-bold text-bg shadow-lg shadow-amber/20"
           >
             Confirm this location

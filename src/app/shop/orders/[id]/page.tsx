@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
+import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
 
 type Rider = Tables<"riders"> & { profiles?: { name: string } | null };
@@ -79,6 +80,7 @@ function AmbientBackground({ accent }: { accent: "amber" | "cyan" | "success" })
 
 export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
   const [justDelivered, setJustDelivered] = useState(false);
 
@@ -233,7 +235,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
         </div>
 
         <section className="rounded-2xl border border-border bg-surface p-4">
-          <h2 className="mb-3 font-display text-sm font-semibold">Order summary</h2>
+          <h2 className="mb-3 font-display text-sm font-semibold">{t("tracking.orderSummary")}</h2>
           {items.map((it, i) => (
             <div key={i} className="mb-1.5 flex justify-between text-sm text-text-dim">
               <span>
@@ -243,13 +245,13 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
             </div>
           ))}
           <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm font-bold">
-            <span>Total</span>
+            <span>{t("cart.total")}</span>
             <span>₹{order.total_amount}</span>
           </div>
         </section>
 
         <section className="rounded-2xl border border-border bg-surface p-4">
-          <h2 className="mb-1 font-display text-sm font-semibold">Delivering to</h2>
+          <h2 className="mb-1 font-display text-sm font-semibold">{t("tracking.deliveringTo")}</h2>
           <p className="text-sm text-text-dim">{order.address}</p>
         </section>
       </main>
