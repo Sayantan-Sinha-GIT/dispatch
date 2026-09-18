@@ -357,8 +357,11 @@ export default function AdminDashboard() {
                         {isSuspended && <span className="block text-[10px] text-danger">suspended</span>}
                       </span>
                     </span>
-                    <span className={`text-[10px] uppercase ${isLive ? "text-success" : "text-text-dim"}`}>
-                      {isLive ? "● live" : "offline"}
+                    <span
+                      className={`text-[10px] uppercase ${isLive ? "text-success" : "text-text-dim"}`}
+                      title={isLive ? "GPS updated within the last 2 minutes" : "No recent GPS ping — location on map may be stale"}
+                    >
+                      {isLive ? "● live gps" : "no gps"}
                     </span>
                   </button>
                 );

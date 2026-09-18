@@ -25,12 +25,13 @@ export default function ShopOrdersPage() {
   useEffect(() => {
     const supabase = createClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
     (async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
 
       const load = () =>
         supabase
@@ -42,12 +43,13 @@ export default function ShopOrdersPage() {
 
       load();
       channel = supabase
-        .channel("shop-orders")
+        .channel(`shop-orders-${user.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `customer_id=eq.${user.id}` }, load)
         .subscribe();
     })();
 
     return () => {
+      cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
