@@ -56,10 +56,20 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    const home = profile?.role === "admin" ? "/admin" : profile?.role === "customer" ? "/shop" : "/rider";
+    if (!profile?.role) {
+      // Role not finalized yet (e.g. a magic-link click that bypassed /auth/callback) — sign
+      // out rather than guessing a portal, which would otherwise redirect-loop right back here.
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    const home = profile.role === "admin" ? "/admin" : profile.role === "customer" ? "/shop" : "/rider";
 
     const wantsArea = path.startsWith("/admin") ? "admin" : path.startsWith("/shop") ? "customer" : "rider";
-    if (profile?.role !== wantsArea) {
+    if (profile.role !== wantsArea) {
       const url = request.nextUrl.clone();
       url.pathname = home;
       return NextResponse.redirect(url);

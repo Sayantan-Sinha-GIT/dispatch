@@ -79,7 +79,10 @@ function UnifiedLogin() {
     setError(null);
     setLoading(true);
     const supabase = createClient();
-    const { error: otpError } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/auth/callback?intent=customer` },
+    });
     setLoading(false);
     if (otpError) {
       setError(otpError.message);
