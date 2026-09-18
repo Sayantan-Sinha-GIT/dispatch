@@ -95,7 +95,7 @@ export default function RiderDashboard() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    router.push("/rider/login");
+    router.push("/login?role=rider");
     router.refresh();
   }
 

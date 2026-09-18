@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { AuthBackground } from "@/components/AuthBackground";
 
 export default function RiderSignupPage() {
   const router = useRouter();
@@ -90,11 +91,8 @@ export default function RiderSignupPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4 py-10">
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-cyan/20 blur-[120px]" />
-        <div className="absolute -right-24 bottom-1/4 h-96 w-96 rounded-full bg-amber/10 blur-[120px]" />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+      <AuthBackground accent="cyan" />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -216,13 +214,13 @@ export default function RiderSignupPage() {
 
         <p className="mt-5 text-center text-xs text-text-dim">
           Already have an account?{" "}
-          <Link href="/rider/login" className="text-cyan hover:underline">
+          <Link href="/login?role=rider" className="text-cyan hover:underline">
             Log in
           </Link>
         </p>
         <p className="mt-1 text-center text-xs text-text-dim">
           Dispatcher?{" "}
-          <Link href="/login" className="text-amber hover:underline">
+          <Link href="/login?role=admin" className="text-amber hover:underline">
             Admin login
           </Link>
         </p>

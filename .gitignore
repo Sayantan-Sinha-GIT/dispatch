@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Local Netlify folder
 .netlify
+
+# Local design references, not part of the app
+/design-inspire

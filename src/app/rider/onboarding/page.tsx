@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { AuthBackground } from "@/components/AuthBackground";
 
 export default function RiderOnboardingPage() {
   const router = useRouter();
@@ -54,11 +55,8 @@ export default function RiderOnboardingPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-cyan/20 blur-[120px]" />
-        <div className="absolute -right-24 bottom-1/4 h-96 w-96 rounded-full bg-amber/10 blur-[120px]" />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <AuthBackground accent="cyan" />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}

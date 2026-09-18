@@ -34,7 +34,7 @@ export default function ShopCatalogPage() {
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/shop/login");
+    router.push("/login?role=customer");
     router.refresh();
   }
 

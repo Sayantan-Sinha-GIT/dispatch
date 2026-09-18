@@ -8,23 +8,19 @@ export async function GET(request: NextRequest) {
   const intent = (searchParams.get("intent") ?? "customer") as AuthIntent;
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/${intent === "rider" ? "rider/login" : "shop/login"}?error=missing_code`);
+    return NextResponse.redirect(`${origin}/login?role=${intent}&error=missing_code`);
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(
-      `${origin}/${intent === "rider" ? "rider/login" : "shop/login"}?error=${encodeURIComponent(error.message)}`,
-    );
+    return NextResponse.redirect(`${origin}/login?role=${intent}&error=${encodeURIComponent(error.message)}`);
   }
 
   const result = await finalizeRole(supabase, intent);
   if ("error" in result) {
     await supabase.auth.signOut();
-    return NextResponse.redirect(
-      `${origin}/${intent === "rider" ? "rider/login" : "shop/login"}?error=${encodeURIComponent(result.error)}`,
-    );
+    return NextResponse.redirect(`${origin}/login?role=${intent}&error=${encodeURIComponent(result.error)}`);
   }
 
   if (result.role === "rider") {

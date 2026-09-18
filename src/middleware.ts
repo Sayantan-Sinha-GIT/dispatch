@@ -35,17 +35,13 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthRoute =
-    path.startsWith("/login") ||
-    path === "/rider/login" ||
-    path === "/rider/signup" ||
-    path === "/shop/login" ||
-    path === "/shop/verify" ||
-    path.startsWith("/auth/callback");
+    path.startsWith("/login") || path === "/rider/signup" || path.startsWith("/auth/callback");
   const isPublic = isAuthRoute || path === "/";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = path.startsWith("/rider") ? "/rider/login" : path.startsWith("/shop") ? "/shop/login" : "/login";
+    url.pathname = "/login";
+    url.searchParams.set("role", path.startsWith("/rider") ? "rider" : path.startsWith("/shop") ? "customer" : "admin");
     return NextResponse.redirect(url);
   }
 
