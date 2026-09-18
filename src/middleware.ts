@@ -35,29 +35,47 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthRoute =
-    path.startsWith("/login") || path === "/rider/login" || path === "/rider/signup";
+    path.startsWith("/login") ||
+    path === "/rider/login" ||
+    path === "/rider/signup" ||
+    path === "/shop/login" ||
+    path === "/shop/verify" ||
+    path.startsWith("/auth/callback");
   const isPublic = isAuthRoute || path === "/";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = path.startsWith("/rider") ? "/rider/login" : "/login";
+    url.pathname = path.startsWith("/rider") ? "/rider/login" : path.startsWith("/shop") ? "/shop/login" : "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && !isAuthRoute && (path.startsWith("/admin") || path.startsWith("/rider"))) {
+  if (
+    user &&
+    !isAuthRoute &&
+    (path.startsWith("/admin") || path.startsWith("/rider") || path.startsWith("/shop"))
+  ) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    const wantsAdmin = path.startsWith("/admin");
-    const isAdmin = profile?.role === "admin";
+    const home = profile?.role === "admin" ? "/admin" : profile?.role === "customer" ? "/shop" : "/rider";
 
-    if (wantsAdmin !== isAdmin) {
+    const wantsArea = path.startsWith("/admin") ? "admin" : path.startsWith("/shop") ? "customer" : "rider";
+    if (profile?.role !== wantsArea) {
       const url = request.nextUrl.clone();
-      url.pathname = isAdmin ? "/admin" : "/rider";
+      url.pathname = home;
       return NextResponse.redirect(url);
+    }
+
+    if (profile?.role === "rider" && path !== "/rider/onboarding") {
+      const { data: rider } = await supabase.from("riders").select("id").eq("profile_id", user.id).maybeSingle();
+      if (!rider) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/rider/onboarding";
+        return NextResponse.redirect(url);
+      }
     }
   }
 

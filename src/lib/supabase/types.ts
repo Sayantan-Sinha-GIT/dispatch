@@ -101,15 +101,21 @@ export type Database = {
           address: string
           assigned_rider_id: string | null
           created_at: string
+          customer_id: string | null
+          delivery_fee: number | null
           id: string
+          items: Json | null
           lat: number
           lng: number
           offered_at: string | null
           raw_text: string
           sequence_in_route: number | null
+          source: string
           status: string
+          subtotal: number | null
           time_window_end: string | null
           time_window_start: string | null
+          total_amount: number | null
           weight: number
         }
         Insert: {
@@ -117,15 +123,21 @@ export type Database = {
           address: string
           assigned_rider_id?: string | null
           created_at?: string
+          customer_id?: string | null
+          delivery_fee?: number | null
           id?: string
+          items?: Json | null
           lat: number
           lng: number
           offered_at?: string | null
           raw_text: string
           sequence_in_route?: number | null
+          source?: string
           status?: string
+          subtotal?: number | null
           time_window_end?: string | null
           time_window_start?: string | null
+          total_amount?: number | null
           weight?: number
         }
         Update: {
@@ -133,15 +145,21 @@ export type Database = {
           address?: string
           assigned_rider_id?: string | null
           created_at?: string
+          customer_id?: string | null
+          delivery_fee?: number | null
           id?: string
+          items?: Json | null
           lat?: number
           lng?: number
           offered_at?: string | null
           raw_text?: string
           sequence_in_route?: number | null
+          source?: string
           status?: string
+          subtotal?: number | null
           time_window_end?: string | null
           time_window_start?: string | null
+          total_amount?: number | null
           weight?: number
         }
         Relationships: [
@@ -152,7 +170,47 @@ export type Database = {
             referencedRelation: "riders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      products: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          image_gradient: string
+          in_stock: boolean
+          name: string
+          price: number
+          unit: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          image_gradient?: string
+          in_stock?: boolean
+          name: string
+          price: number
+          unit: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          image_gradient?: string
+          in_stock?: boolean
+          name?: string
+          price?: number
+          unit?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -160,21 +218,21 @@ export type Database = {
           id: string
           name: string
           phone: string | null
-          role: string
+          role: string | null
         }
         Insert: {
           created_at?: string
           id: string
           name: string
           phone?: string | null
-          role: string
+          role?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           phone?: string | null
-          role?: string
+          role?: string | null
         }
         Relationships: []
       }
@@ -356,3 +414,43 @@ export type TablesUpdate<
       ? U
       : never
     : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

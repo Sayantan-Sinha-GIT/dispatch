@@ -112,6 +112,28 @@ export async function offerOrderToRider(
 }
 
 /**
+ * Offers a freshly placed customer order to the nearest eligible active rider
+ * the moment it's placed, instead of waiting for the admin's batch "Optimize
+ * routes" click. Leaves the order pending (with an admin nudge) if no rider
+ * is currently free — the next optimize run or rider coming online will pick
+ * it up via the existing pending-orders path.
+ */
+export async function autoAssignOrder(admin: AdminClient, order: OrderRow) {
+  const replacement = await findReplacementRider(admin, order, "");
+  if (!replacement) {
+    await notifyAllAdmins(
+      admin,
+      "order_unassigned",
+      "New order needs a rider",
+      `"${order.address}" was placed but no rider is free right now — it's waiting in the pending pool.`,
+    );
+    return null;
+  }
+  await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase);
+  return replacement.rider;
+}
+
+/**
  * Processes orders stuck in "offered" past the acceptance window. Penalizes
  * the non-responding rider after repeated misses and hands the order to the
  * next nearest active rider, or back to the pending pool if none are free.

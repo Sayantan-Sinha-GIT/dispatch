@@ -1,0 +1,81 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import type { Tables } from "@/lib/supabase/types";
+
+type Order = Tables<"orders">;
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Finding a rider…",
+  offered: "Rider notified",
+  assigned: "On the way",
+  delivered: "Delivered",
+  expired: "Reassigning…",
+  failed: "Failed",
+};
+
+export default function ShopOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const load = () =>
+        supabase
+          .from("orders")
+          .select("*")
+          .eq("customer_id", user.id)
+          .order("created_at", { ascending: false })
+          .then(({ data }) => setOrders(data ?? []));
+
+      load();
+      channel = supabase
+        .channel("shop-orders")
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `customer_id=eq.${user.id}` }, load)
+        .subscribe();
+    })();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-bg pb-10">
+      <header className="flex items-center gap-3.5 border-b border-border px-5 py-5">
+        <Link href="/shop" className="text-text">
+          ←
+        </Link>
+        <h1 className="font-display text-lg font-semibold">My orders</h1>
+      </header>
+
+      <main className="mx-auto max-w-lg space-y-2.5 p-5">
+        {orders.map((o) => (
+          <Link
+            key={o.id}
+            href={`/shop/orders/${o.id}`}
+            className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition-colors hover:border-amber/40"
+          >
+            <div>
+              <p className="text-sm font-medium">{o.address}</p>
+              <p className="text-xs text-text-dim">₹{o.total_amount} · {new Date(o.created_at).toLocaleDateString()}</p>
+            </div>
+            <span className="rounded-full bg-amber/15 px-2.5 py-1 text-[10px] font-semibold uppercase text-amber">
+              {STATUS_LABEL[o.status] ?? o.status}
+            </span>
+          </Link>
+        ))}
+        {orders.length === 0 && <p className="py-16 text-center text-sm text-text-dim">No orders yet.</p>}
+      </main>
+    </div>
+  );
+}

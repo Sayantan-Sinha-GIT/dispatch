@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
-export default function RiderLoginPage() {
+export default function ShopLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <ShopLoginForm />
+    </Suspense>
+  );
+}
+
+function ShopLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -20,7 +28,7 @@ export default function RiderLoginPage() {
     const supabase = createClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?intent=rider` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?intent=customer` },
     });
     if (oauthError) {
       setError(oauthError.message);
@@ -28,45 +36,28 @@ export default function RiderLoginPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     const supabase = createClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
-      password,
+      options: { shouldCreateUser: true },
     });
-
-    if (signInError || !data.user) {
-      setError(signInError?.message ?? "Sign in failed");
-      setLoading(false);
+    setLoading(false);
+    if (otpError) {
+      setError(otpError.message);
       return;
     }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .single();
-
-    if (profile?.role !== "rider") {
-      await supabase.auth.signOut();
-      setError("This is the rider portal. Admins should use the admin login.");
-      setLoading(false);
-      return;
-    }
-
-    router.push("/rider");
-    router.refresh();
+    router.push(`/shop/verify?email=${encodeURIComponent(email)}`);
   }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
       <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-cyan/20 blur-[120px]" />
-        <div className="absolute -right-24 bottom-1/4 h-96 w-96 rounded-full bg-amber/10 blur-[120px]" />
+        <div className="absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-amber/20 blur-[120px]" />
+        <div className="absolute -right-24 bottom-1/4 h-96 w-96 rounded-full bg-cyan/10 blur-[120px]" />
       </div>
 
       <motion.div
@@ -76,14 +67,17 @@ export default function RiderLoginPage() {
         className="relative w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl shadow-black/40"
       >
         <div className="mb-8 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan text-bg font-display font-bold">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber text-bg font-display font-bold">
             D
           </span>
           <div>
             <h1 className="font-display text-lg font-semibold leading-none">Dispatch</h1>
-            <p className="text-xs text-text-dim">Rider portal</p>
+            <p className="text-xs text-text-dim">Order from nearby stores</p>
           </div>
         </div>
+
+        <h2 className="mb-1 font-display text-xl font-semibold">Get your groceries delivered</h2>
+        <p className="mb-6 text-sm text-text-dim">Sign in to start shopping.</p>
 
         <motion.button
           whileTap={{ scale: 0.98 }}
@@ -107,31 +101,16 @@ export default function RiderLoginPage() {
           <div className="h-px flex-grow bg-border" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleEmailContinue} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
-              Email
-            </label>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-cyan"
+              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-amber"
               placeholder="you@example.com"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-cyan"
-              placeholder="••••••••"
             />
           </div>
 
@@ -149,28 +128,19 @@ export default function RiderLoginPage() {
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-cyan py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-lg bg-amber py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Sending code…" : "Continue with email"}
           </motion.button>
         </form>
 
         <p className="mt-5 text-center text-xs text-text-dim">
-          New rider?{" "}
-          <Link href="/rider/signup" className="text-cyan hover:underline">
-            Sign up
-          </Link>
+          We&apos;ll email you a 6-digit code — no password needed.
         </p>
-        <p className="mt-1 text-center text-xs text-text-dim">
-          Dispatcher?{" "}
-          <Link href="/login" className="text-amber hover:underline">
-            Admin login
-          </Link>
-        </p>
-        <p className="mt-1 text-center text-xs text-text-dim">
-          Ordering something?{" "}
-          <Link href="/shop/login" className="text-amber hover:underline">
-            Customer sign in
+        <p className="mt-4 text-center text-xs text-text-dim">
+          Delivering something?{" "}
+          <Link href="/rider/login" className="text-cyan hover:underline">
+            Rider sign in
           </Link>
         </p>
       </motion.div>

@@ -9,6 +9,8 @@ import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useSweepPolling } from "@/lib/useSweepPolling";
 import { ROUTE_COLORS } from "@/lib/routeColors";
+import { ProductsTab } from "@/components/admin/ProductsTab";
+import { UsersTab } from "@/components/admin/UsersTab";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -32,6 +34,7 @@ export default function AdminDashboard() {
   const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"dispatch" | "products" | "users">("dispatch");
 
   useSweepPolling();
 
@@ -167,8 +170,32 @@ export default function AdminDashboard() {
           <KpiCard label="Delivered" value={deliveredCount} icon="✅" accent="text-success" />
           <KpiCard label="Active riders" value={riders.length} icon="🟢" accent="text-success" />
         </div>
+
+        <div className="relative mt-5 flex gap-2">
+          {(
+            [
+              ["dispatch", "Dispatch"],
+              ["products", "Products"],
+              ["users", "Users"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                tab === key ? "bg-amber text-bg" : "border border-border bg-surface-raised text-text-dim hover:text-text"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </header>
 
+      {tab === "products" && <ProductsTab />}
+      {tab === "users" && <UsersTab />}
+
+      {tab === "dispatch" && (
       <main className="grid grid-cols-1 gap-5 p-6 lg:grid-cols-[380px_1fr]">
         <div className="space-y-5">
           {lastRun && (
@@ -374,6 +401,7 @@ export default function AdminDashboard() {
           />
         </section>
       </main>
+      )}
     </div>
   );
 }
