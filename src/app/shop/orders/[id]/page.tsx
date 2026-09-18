@@ -22,7 +22,8 @@ const STEPS = [
 function stepIndex(status: string) {
   if (status === "delivered") return 3;
   if (status === "assigned") return 2;
-  if (status === "offered" || status === "expired") return 1;
+  if (status === "offered") return 1;
+  if (status === "expired") return 0;
   return 0;
 }
 
@@ -64,6 +65,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
   const { id } = use(params);
   const { t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [justDelivered, setJustDelivered] = useState(false);
 
   useEffect(() => {
@@ -73,8 +75,12 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
         .from("orders")
         .select("*, riders(*, profiles(name))")
         .eq("id", id)
-        .single()
+        .maybeSingle()
         .then(({ data }) => {
+          if (!data) {
+            setNotFound(true);
+            return;
+          }
           setOrder((prev) => {
             if (prev && prev.status !== "delivered" && data?.status === "delivered") {
               setJustDelivered(true);
@@ -94,6 +100,20 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
       supabase.removeChannel(channel);
     };
   }, [id]);
+
+  if (notFound) {
+    return (
+      <div className="relative flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center text-sm text-text-dim">
+        <AmbientBackground accent="amber" />
+        <span className="text-3xl">🚫</span>
+        <p className="text-base font-semibold text-text">This order was cancelled</p>
+        <p className="max-w-xs">It's no longer available — an admin may have removed it. Check your other orders instead.</p>
+        <Link href="/shop/orders" className="mt-2 rounded-full bg-amber px-5 py-2 font-semibold text-bg">
+          Back to orders
+        </Link>
+      </div>
+    );
+  }
 
   if (!order) {
     return (

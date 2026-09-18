@@ -10,6 +10,7 @@ export function ProductsTab() {
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState({ name: "", category: "", unit: "", price: "" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch("/api/admin/products");
@@ -21,31 +22,55 @@ export function ProductsTab() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(t);
+  }, [error]);
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name || !form.category || !form.unit || !form.price) return;
     setSaving(true);
-    await fetch("/api/admin/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, price: Number(form.price) }),
-    });
-    setForm({ name: "", category: "", unit: "", price: "" });
-    setSaving(false);
-    load();
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, price: Number(form.price) }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to add product");
+      setForm({ name: "", category: "", unit: "", price: "" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add product");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function toggleStock(p: Product) {
-    await fetch(`/api/admin/products/${p.id}`, {
+    setError(null);
+    const res = await fetch(`/api/admin/products/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ in_stock: !p.in_stock }),
     });
+    if (!res.ok) {
+      setError("Couldn't update stock status");
+      return;
+    }
     load();
   }
 
   async function remove(p: Product) {
-    await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
+    setError(null);
+    const res = await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setError("Couldn't delete that product");
+      return;
+    }
     load();
   }
 
@@ -53,6 +78,9 @@ export function ProductsTab() {
     <div className="grid grid-cols-1 gap-5 p-6 lg:grid-cols-[320px_1fr]">
       <section className="h-fit rounded-2xl border border-border bg-surface p-4">
         <h2 className="mb-3 font-display text-sm font-semibold">Add product</h2>
+        {error && (
+          <p className="mb-2.5 rounded-lg bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{error}</p>
+        )}
         <form onSubmit={handleAdd} className="space-y-2.5">
           <input
             placeholder="Name"

@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
   if (!name || !category || !unit || price == null) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
+    return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
+  }
 
   const { data, error } = await admin
     .from("products")

@@ -4,7 +4,9 @@ import { useEffect } from "react";
 export function useSweepPolling(intervalMs = 20000) {
   useEffect(() => {
     const tick = () => {
-      fetch("/api/offers/sweep", { method: "POST" }).catch(() => {});
+      fetch("/api/offers/sweep", { method: "POST" }).catch((err) => {
+        console.error("Offer sweep request failed", err);
+      });
     };
     tick();
     const interval = setInterval(tick, intervalMs);

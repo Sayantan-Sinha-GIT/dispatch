@@ -17,6 +17,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  const hasInvalidQty = items.some((i) => !Number.isInteger(i.qty) || i.qty <= 0 || i.qty > 50);
+  if (hasInvalidQty) {
+    return NextResponse.json({ error: "Item quantities must be whole numbers between 1 and 50" }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

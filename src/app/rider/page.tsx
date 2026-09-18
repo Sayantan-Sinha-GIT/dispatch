@@ -33,6 +33,7 @@ export default function RiderDashboard() {
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useSweepPolling();
 
@@ -79,6 +80,12 @@ export default function RiderDashboard() {
   }, []);
 
   useEffect(() => {
+    if (!errorMsg) return;
+    const t = setTimeout(() => setErrorMsg(null), 5000);
+    return () => clearTimeout(t);
+  }, [errorMsg]);
+
+  useEffect(() => {
     if (!rider || rider.status !== "active" || !("geolocation" in navigator)) return;
 
     const watchId = navigator.geolocation.watchPosition(
@@ -107,10 +114,17 @@ export default function RiderDashboard() {
   async function toggleStatus() {
     if (!rider) return;
     setTogglingStatus(true);
+    setErrorMsg(null);
     const nextStatus = rider.status === "active" ? "inactive" : "active";
-    await supabase.rpc("set_my_status", { new_status: nextStatus });
+    const { error } = await supabase.rpc("set_my_status", { new_status: nextStatus });
+    if (error) {
+      setErrorMsg("Couldn't update your status — try again.");
+      setTogglingStatus(false);
+      return;
+    }
     if (nextStatus === "inactive") {
-      await fetch("/api/rider/go-offline", { method: "POST" });
+      const res = await fetch("/api/rider/go-offline", { method: "POST" });
+      if (!res.ok) setErrorMsg("You're offline, but some deliveries may not have been handed back yet.");
     }
     await loadData();
     setTogglingStatus(false);
@@ -118,13 +132,19 @@ export default function RiderDashboard() {
 
   async function acceptOrder(orderId: string) {
     setAccepting(orderId);
-    await supabase.rpc("accept_order", { order_id: orderId });
+    setErrorMsg(null);
+    const { error } = await supabase.rpc("accept_order", { order_id: orderId });
+    if (error) {
+      setErrorMsg("Too slow — that delivery just went to someone else.");
+    }
     await loadData();
     setAccepting(null);
   }
 
   async function markDelivered(orderId: string) {
-    await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
+    setErrorMsg(null);
+    const { error } = await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
+    if (error) setErrorMsg("Couldn't mark that as delivered — try again.");
     loadData();
   }
 
@@ -138,6 +158,19 @@ export default function RiderDashboard() {
   return (
     <div className="relative min-h-screen pb-10">
       <AmbientBackground accent={isSuspended ? "amber" : isActive ? "success" : "cyan"} />
+
+      <AnimatePresence>
+        {errorMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-full bg-danger px-4 py-2 text-sm font-medium text-white shadow-lg"
+          >
+            {errorMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <header className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface via-surface to-cyan/10 px-5 pb-6 pt-5 backdrop-blur-sm">
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan/10 blur-3xl" />

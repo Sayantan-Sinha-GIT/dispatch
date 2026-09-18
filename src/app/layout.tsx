@@ -24,6 +24,27 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Dispatch — Route Optimizer",
   description: "Hyperlocal delivery dispatch and route optimization",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Dispatch",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0a0d12",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

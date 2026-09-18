@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -23,6 +23,7 @@ export default function ShopCartPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     setCart(getCart());
@@ -32,6 +33,7 @@ export default function ShopCartPage() {
   }, []);
 
   async function handlePlaceOrder() {
+    if (submittingRef.current) return;
     if (!houseNo.trim() || !street.trim() || !locality.trim()) {
       setError("Fill in house/flat no., street, and locality.");
       return;
@@ -40,6 +42,7 @@ export default function ShopCartPage() {
       setError("Pin your delivery location on the map.");
       return;
     }
+    submittingRef.current = true;
     setError(null);
     setPlacing(true);
     const address = [houseNo, street, locality, landmark && `near ${landmark}`].filter(Boolean).join(", ");
@@ -62,6 +65,7 @@ export default function ShopCartPage() {
       setError(err instanceof Error ? err.message : "Could not place order");
     } finally {
       setPlacing(false);
+      submittingRef.current = false;
     }
   }
 

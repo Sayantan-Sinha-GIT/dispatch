@@ -84,22 +84,39 @@ async function notifyAllAdmins(admin: AdminClient, type: string, title: string, 
   }
 }
 
+/**
+ * Claims `order` for `rider` via the `claim_order_for_rider` Postgres function,
+ * which re-checks the rider's open-order count against capacity and performs
+ * the status transition in one atomic, row-locked statement. This closes the
+ * TOCTOU window between `findReplacementRider`'s capacity snapshot and the
+ * write: two concurrent offers targeting the same rider (e.g. a fresh
+ * checkout racing a sweep-triggered reassignment) serialize on the rider row
+ * lock instead of both succeeding and pushing the rider over capacity.
+ *
+ * Returns false (without notifying anyone) if the order was no longer in
+ * `fromStatus` (already claimed elsewhere) or the rider was already at
+ * capacity by the time the lock was acquired — callers should treat that as
+ * "this order needs to be picked up by the next sweep/optimize pass."
+ */
 export async function offerOrderToRider(
   admin: AdminClient,
   order: { id: string; address: string; lat: number; lng: number },
   rider: { id: string; profile_id: string },
   sequence: number,
+  fromStatus: string = "pending",
 ) {
-  await admin
-    .from("orders")
-    .update({
-      assigned_rider_id: rider.id,
-      sequence_in_route: sequence,
-      status: "offered",
-      offered_at: new Date().toISOString(),
-      accepted_at: null,
-    })
-    .eq("id", order.id);
+  const { data: claimed, error } = await admin.rpc("claim_order_for_rider", {
+    p_order_id: order.id,
+    p_rider_id: rider.id,
+    p_sequence: sequence,
+    p_from_status: fromStatus,
+  });
+
+  if (error) {
+    console.error("claim_order_for_rider failed", error);
+    return false;
+  }
+  if (!claimed) return false;
 
   await notify(
     admin,
@@ -109,6 +126,7 @@ export async function offerOrderToRider(
     `${order.address} — accept within 5 minutes or it goes to another rider.`,
     order.id,
   );
+  return true;
 }
 
 /**
@@ -129,7 +147,18 @@ export async function autoAssignOrder(admin: AdminClient, order: OrderRow) {
     );
     return null;
   }
-  await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase);
+  const claimed = await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase);
+  if (!claimed) {
+    // Lost the race for this rider's last capacity slot — leave the order
+    // pending rather than reporting a rider that never actually got it.
+    await notifyAllAdmins(
+      admin,
+      "order_unassigned",
+      "New order needs a rider",
+      `"${order.address}" was placed but the nearest rider filled up first — it's waiting in the pending pool.`,
+    );
+    return null;
+  }
   return replacement.rider;
 }
 
@@ -225,8 +254,11 @@ async function reassignOrExpire(
     ? await findReplacementRider(admin, order, missedRiderId)
     : await findReplacementRider(admin, order, "");
 
-  if (replacement) {
-    await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase);
+  const claimed = replacement
+    ? await offerOrderToRider(admin, order, replacement.rider, replacement.sequenceBase, "expired")
+    : false;
+
+  if (claimed && replacement) {
     await notifyAllAdmins(
       admin,
       "order_reassigned",

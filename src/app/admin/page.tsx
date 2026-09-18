@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -42,6 +42,8 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<"dispatch" | "products" | "users">("dispatch");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reassigningId, setReassigningId] = useState<string | null>(null);
+  const parsingRef = useRef(false);
 
   useSweepPolling();
 
@@ -99,7 +101,8 @@ export default function AdminDashboard() {
 
   async function handleParseOrders(e: React.FormEvent) {
     e.preventDefault();
-    if (!rawText.trim()) return;
+    if (!rawText.trim() || parsingRef.current) return;
+    parsingRef.current = true;
     setParsing(true);
     setMessage(null);
     try {
@@ -118,6 +121,7 @@ export default function AdminDashboard() {
       setMessage(err instanceof Error ? err.message : "Failed to parse orders");
     } finally {
       setParsing(false);
+      parsingRef.current = false;
     }
   }
 
@@ -141,6 +145,21 @@ export default function AdminDashboard() {
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);
+    }
+  }
+
+  async function handleReassignOrder(orderId: string) {
+    setReassigningId(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/reassign`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setMessage("Order pulled back to the pending pool.");
+      loadData();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to reassign order");
+    } finally {
+      setReassigningId(null);
     }
   }
 
@@ -434,6 +453,17 @@ export default function AdminDashboard() {
                       <span className="truncate pr-2">{order.address}</span>
                       <StatusPill status={order.status} />
                     </button>
+                    {(order.status === "assigned" || order.status === "offered") && (
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleReassignOrder(order.id)}
+                        disabled={reassigningId === order.id}
+                        title="Pull this order back to pending (rider stuck/unresponsive)"
+                        className="shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold text-text-dim transition-colors hover:bg-amber/15 hover:text-amber"
+                      >
+                        {reassigningId === order.id ? "…" : "↺"}
+                      </motion.button>
+                    )}
                     <motion.button
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleDeleteOrder(order.id)}
