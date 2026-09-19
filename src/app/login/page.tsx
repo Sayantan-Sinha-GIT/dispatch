@@ -31,26 +31,33 @@ export default function LoginPage() {
   );
 }
 
+/** Supabase phrases this a few different ways; all of them mean "click the link first". */
+function isUnconfirmedEmail(message: string | undefined) {
+  return !!message && /not confirmed|not verified|confirm your email/i.test(message);
+}
+
 function UnifiedLogin() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
   const initialRole = (searchParams.get("role") as Role) ?? "customer";
   const [role, setRole] = useState<Role>(["customer", "rider", "admin"].includes(initialRole) ? initialRole : "customer");
-  const [step, setStep] = useState<"form" | "verify">("form");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
   /**
-   * Customers default to a password because the emailed-code path depends on
-   * the provider's magic-link template and on the recipient's mail client not
-   * pre-fetching single-use links. The code path stays available as a choice.
+   * Two modes only. Accounts are created with a password and activated by
+   * clicking the link Supabase emails; there is no code to type anywhere.
    */
-  const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "code">("signin");
-  const [error, setError] = useState<string | null>(searchParams.get("error"));
-  const [notice, setNotice] = useState<string | null>(null);
+  const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "sent">("signin");
+  const errCode = searchParams.get("err");
+  const [error, setError] = useState<string | null>(errCode ? t(`login.err.${errCode}`) : searchParams.get("error"));
+  const [notice, setNotice] = useState<string | null>(
+    searchParams.get("notice") === "verified" ? t("login.verifiedNotice") : null,
+  );
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -62,68 +69,125 @@ function UnifiedLogin() {
 
   const meta = ROLE_META[role];
 
-  function switchRole(next: Role) {
-    setRole(next);
-    setStep("form");
+  function resetFeedback() {
     setError(null);
     setNotice(null);
+    setNeedsVerification(false);
+    setResendState("idle");
+  }
+
+  function switchRole(next: Role) {
+    setRole(next);
+    resetFeedback();
     setPassword("");
-    setCode("");
     setCustomerMode("signin");
   }
 
-  async function signInCustomerWithPassword() {
+  /** Shared by all three roles: sign in, then refuse if the profile is a different role. */
+  async function passwordSignIn(expected: Role, destination: string) {
     const supabase = createClient();
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !data.user) {
-      setError(signInError?.message ?? t("login.err.signInFailed"));
+      if (isUnconfirmedEmail(signInError?.message)) {
+        setError(t("login.err.emailNotConfirmed"));
+        setNeedsVerification(true);
+      } else {
+        setError(signInError?.message ?? t("login.err.signInFailed"));
+      }
       setLoading(false);
       return;
     }
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
-    if (profile?.role && profile.role !== "customer") {
+    const actual = profile?.role ?? null;
+    // A customer profile may legitimately not be stamped yet (first Google
+    // sign-in); riders and admins must already carry their role.
+    const mismatch = expected === "customer" ? !!actual && actual !== "customer" : actual !== expected;
+    if (mismatch) {
       await supabase.auth.signOut();
-      setError(t("login.err.notCustomer"));
+      setError(
+        expected === "customer"
+          ? t("login.err.notCustomer")
+          : expected === "rider"
+            ? t("login.err.notRider")
+            : t("login.err.notAdmin"),
+      );
       setLoading(false);
       return;
     }
-    router.push("/shop");
+    router.push(destination);
     router.refresh();
   }
 
-  async function handleCustomerPasswordSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    await signInCustomerWithPassword();
+  function handleSignIn(expected: Role, destination: string) {
+    return async (e: React.FormEvent) => {
+      e.preventDefault();
+      resetFeedback();
+      setLoading(true);
+      await passwordSignIn(expected, destination);
+    };
   }
 
   async function handleCustomerSignUp(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
+    resetFeedback();
     if (password.length < 8) {
       setError(t("login.err.weakPassword"));
       return;
     }
     setLoading(true);
-    try {
-      const res = await fetch("/api/shop/signup", {
+    const supabase = createClient();
+    // Sign up from the browser (not through an admin API call) precisely so
+    // Supabase sends the confirmation email. The account stays inactive until
+    // the link in that email is clicked.
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name: name.trim(), role: "customer" },
+        emailRedirectTo: `${window.location.origin}/auth/callback?intent=customer`,
+      },
+    });
+    setLoading(false);
+
+    if (signUpError) {
+      setError(signUpError.message);
+      return;
+    }
+    // Supabase hides "this email is taken" behind a user object with no
+    // identities rather than an error, so as not to leak who has an account.
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      setError(t("login.err.emailTaken"));
+      return;
+    }
+    // If the project has email confirmation switched off, signUp returns a live
+    // session — there is nothing to verify, so go straight in.
+    if (data.session) {
+      await fetch("/api/auth/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ intent: "customer" }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.code ? t(`api.err.${json.code}`) : json.error);
-      setNotice(t("login.signupSuccess"));
-      await signInCustomerWithPassword();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.err.generic"));
-      setLoading(false);
+      router.push("/shop");
+      router.refresh();
+      return;
     }
+    setCustomerMode("sent");
+  }
+
+  async function handleResend() {
+    if (!email) return;
+    setResendState("sending");
+    const supabase = createClient();
+    await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?intent=${role}` },
+    });
+    setResendState("sent");
   }
 
   async function handleGoogle() {
-    setError(null);
+    resetFeedback();
     setGoogleLoading(true);
     const supabase = createClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -134,94 +198,6 @@ function UnifiedLogin() {
       setError(oauthError.message);
       setGoogleLoading(false);
     }
-  }
-
-  async function handleCustomerContinue(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const supabase = createClient();
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/auth/callback?intent=customer` },
-    });
-    setLoading(false);
-    if (otpError) {
-      setError(otpError.message);
-      return;
-    }
-    setStep("verify");
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
-    if (verifyError) {
-      setError(verifyError.message);
-      setLoading(false);
-      return;
-    }
-    const res = await fetch("/api/auth/finalize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "customer" }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      await supabase.auth.signOut();
-      setError(json.error ?? t("login.err.couldNotSignIn"));
-      setLoading(false);
-      return;
-    }
-    router.push("/shop");
-    router.refresh();
-  }
-
-  async function handleRiderSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const supabase = createClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError || !data.user) {
-      setError(signInError?.message ?? t("login.err.signInFailed"));
-      setLoading(false);
-      return;
-    }
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
-    if (profile?.role !== "rider") {
-      await supabase.auth.signOut();
-      setError(t("login.err.notRider"));
-      setLoading(false);
-      return;
-    }
-    router.push("/rider");
-    router.refresh();
-  }
-
-  async function handleAdminSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const supabase = createClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError || !data.user) {
-      setError(signInError?.message ?? t("login.err.signInFailed"));
-      setLoading(false);
-      return;
-    }
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
-    if (profile?.role !== "admin") {
-      await supabase.auth.signOut();
-      setError(t("login.err.notAdmin"));
-      setLoading(false);
-      return;
-    }
-    router.push("/admin");
-    router.refresh();
   }
 
   return (
@@ -269,13 +245,26 @@ function UnifiedLogin() {
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${role}-${step}`}
+            key={`${role}-${customerMode}`}
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {role === "customer" && step === "form" && (
+            {role === "customer" && customerMode === "sent" && (
+              <VerifySent
+                email={email}
+                accent="amber"
+                onBack={() => {
+                  setCustomerMode("signin");
+                  resetFeedback();
+                }}
+                onResend={handleResend}
+                resendState={resendState}
+              />
+            )}
+
+            {role === "customer" && customerMode === "signin" && (
               <>
                 <motion.button
                   whileTap={{ scale: 0.98 }}
@@ -288,83 +277,41 @@ function UnifiedLogin() {
                   {googleLoading ? t("login.redirecting") : t("login.google")}
                 </motion.button>
                 <Divider label={t("login.orEmail")} />
-
-                {customerMode === "signin" && (
-                  <>
-                    <form onSubmit={handleCustomerPasswordSignIn} className="space-y-4">
-                      <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                      <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-                      <ErrorNotice error={error} />
-                      <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
-                    </form>
-                    <p className="mt-4 text-center text-xs text-text-dim">
-                      {t("login.newHere")}{" "}
-                      <button type="button" onClick={() => { setCustomerMode("signup"); setError(null); }} className="text-amber hover:underline">
-                        {t("login.createAccount")}
-                      </button>
-                    </p>
-                    <button type="button" onClick={() => { setCustomerMode("code"); setError(null); }} className="mt-2 w-full text-center text-[11px] text-text-dim hover:text-text">
-                      {t("login.useEmailCode")}
-                    </button>
-                  </>
-                )}
-
-                {customerMode === "signup" && (
-                  <>
-                    <form onSubmit={handleCustomerSignUp} className="space-y-4">
-                      <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
-                      <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                      <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-                      <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
-                      <ErrorNotice error={error} />
-                      {notice && <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">{notice}</p>}
-                      <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
-                    </form>
-                    <p className="mt-4 text-center text-xs text-text-dim">
-                      {t("login.haveAccount")}{" "}
-                      <button type="button" onClick={() => { setCustomerMode("signin"); setError(null); }} className="text-amber hover:underline">
-                        {t("login.signIn")}
-                      </button>
-                    </p>
-                  </>
-                )}
-
-                {customerMode === "code" && (
-                  <>
-                    <form onSubmit={handleCustomerContinue} className="space-y-4">
-                      <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                      <ErrorNotice error={error} />
-                      <SubmitButton loading={loading} accent="amber" label={t("login.continueEmail")} loadingLabel={t("login.sendingCode")} />
-                    </form>
-                    <p className="mt-4 text-center text-[11px] text-text-dim">{t("login.otpHint")}</p>
-                    <button type="button" onClick={() => { setCustomerMode("signin"); setError(null); }} className="mt-2 w-full text-center text-[11px] text-text-dim hover:text-text">
-                      {t("login.usePassword")}
-                    </button>
-                  </>
-                )}
+                <form onSubmit={handleSignIn("customer", "/shop")} className="space-y-4">
+                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
+                  <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                  <ErrorNotice error={error} />
+                  {notice && <SuccessNotice message={notice} />}
+                  <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="amber" />
+                  <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                </form>
+                <p className="mt-4 text-center text-xs text-text-dim">
+                  {t("login.newHere")}{" "}
+                  <button type="button" onClick={() => { setCustomerMode("signup"); resetFeedback(); }} className="text-amber hover:underline">
+                    {t("login.createAccount")}
+                  </button>
+                </p>
               </>
             )}
 
-            {role === "customer" && step === "verify" && (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <p className="text-xs text-text-dim">
-                  {t("login.verifyHint")} <span className="text-text">{email}</span>.
+            {role === "customer" && customerMode === "signup" && (
+              <>
+                <form onSubmit={handleCustomerSignUp} className="space-y-4">
+                  <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
+                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
+                  <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                  <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
+                  <p className="text-[11px] text-text-dim">{t("login.verifyNotice")}</p>
+                  <ErrorNotice error={error} />
+                  <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
+                </form>
+                <p className="mt-4 text-center text-xs text-text-dim">
+                  {t("login.haveAccount")}{" "}
+                  <button type="button" onClick={() => { setCustomerMode("signin"); resetFeedback(); }} className="text-amber hover:underline">
+                    {t("login.signIn")}
+                  </button>
                 </p>
-                <input
-                  required
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-3 text-center text-2xl tracking-[0.5em] outline-none transition-colors focus:border-amber"
-                  placeholder="——————"
-                />
-                <ErrorNotice error={error} />
-                <SubmitButton loading={loading} accent="amber" label={t("login.verifyBtn")} loadingLabel={t("login.verifying")} disabled={code.length < 6} />
-                <button type="button" onClick={() => setStep("form")} className="w-full text-center text-xs text-text-dim hover:text-text">
-                  {t("login.useOtherEmail")}
-                </button>
-              </form>
+              </>
             )}
 
             {role === "rider" && (
@@ -380,10 +327,12 @@ function UnifiedLogin() {
                   {googleLoading ? t("login.redirecting") : t("login.google")}
                 </motion.button>
                 <Divider label={t("login.orEmail")} />
-                <form onSubmit={handleRiderSubmit} className="space-y-4">
+                <form onSubmit={handleSignIn("rider", "/rider")} className="space-y-4">
                   <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
                   <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
                   <ErrorNotice error={error} />
+                  {notice && <SuccessNotice message={notice} />}
+                  <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="cyan" />
                   <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
                 </form>
                 <p className="mt-4 text-center text-xs text-text-dim">
@@ -396,19 +345,88 @@ function UnifiedLogin() {
             )}
 
             {role === "admin" && (
-              <form onSubmit={handleAdminSubmit} className="space-y-4">
+              <form onSubmit={handleSignIn("admin", "/admin")} className="space-y-4">
                 <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
                 <ErrorNotice error={error} />
+                {notice && <SuccessNotice message={notice} />}
                 <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
               </form>
             )}
           </motion.div>
         </AnimatePresence>
-
-        {notice && <p className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">{notice}</p>}
       </motion.div>
     </div>
+  );
+}
+
+function VerifySent({
+  email,
+  accent,
+  onBack,
+  onResend,
+  resendState,
+}: {
+  email: string;
+  accent: "amber" | "cyan";
+  onBack: () => void;
+  onResend: () => void;
+  resendState: "idle" | "sending" | "sent";
+}) {
+  const { t } = useLanguage();
+  return (
+    <div className="text-center">
+      <div
+        className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full text-xl ${
+          accent === "amber" ? "bg-amber/15" : "bg-cyan/15"
+        }`}
+      >
+        ✉️
+      </div>
+      <h2 className="mb-2 font-display text-base font-semibold">{t("login.checkInbox")}</h2>
+      <p className="mb-1 text-xs leading-relaxed text-text-dim">{t("login.verifySent", { email })}</p>
+      <p className="mb-5 text-[11px] text-text-dim">{t("login.verifySpamHint")}</p>
+      <button
+        type="button"
+        onClick={onResend}
+        disabled={resendState !== "idle"}
+        className={`w-full rounded-lg border py-2.5 text-sm font-semibold disabled:opacity-60 ${
+          accent === "amber" ? "border-amber/40 text-amber" : "border-cyan/40 text-cyan"
+        }`}
+      >
+        {resendState === "sending" ? t("login.resending") : resendState === "sent" ? t("login.resent") : t("login.resend")}
+      </button>
+      <button type="button" onClick={onBack} className="mt-3 w-full text-center text-xs text-text-dim hover:text-text">
+        {t("login.backToSignIn")}
+      </button>
+    </div>
+  );
+}
+
+function ResendRow({
+  show,
+  state,
+  onResend,
+  accent,
+}: {
+  show: boolean;
+  state: "idle" | "sending" | "sent";
+  onResend: () => void;
+  accent: "amber" | "cyan";
+}) {
+  const { t } = useLanguage();
+  if (!show) return null;
+  return (
+    <button
+      type="button"
+      onClick={onResend}
+      disabled={state !== "idle"}
+      className={`w-full text-center text-xs hover:underline disabled:opacity-60 ${
+        accent === "amber" ? "text-amber" : "text-cyan"
+      }`}
+    >
+      {state === "sending" ? t("login.resending") : state === "sent" ? t("login.resent") : t("login.resend")}
+    </button>
   );
 }
 
@@ -463,6 +481,18 @@ function ErrorNotice({ error }: { error: string | null }) {
       className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
     >
       {error}
+    </motion.p>
+  );
+}
+
+function SuccessNotice({ message }: { message: string }) {
+  return (
+    <motion.p
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
+    >
+      {message}
     </motion.p>
   );
 }
