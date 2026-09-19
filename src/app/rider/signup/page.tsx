@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/components/LanguageProvider";
 import { createClient } from "@/lib/supabase/client";
 import { AuthBackground } from "@/components/AuthBackground";
+import { EyeIcon, EyeOffIcon } from "@/components/Icons";
 
 export default function RiderSignupPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function RiderSignupPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  const [showPassword, setShowPassword] = useState(false);
 
   function useMyLocation() {
     setLocating(true);
@@ -185,15 +187,26 @@ export default function RiderSignupPage() {
                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
                   {t("login.password")}
                 </label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-cyan"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    className="w-full rounded-lg border border-border bg-surface-raised py-2.5 pl-3.5 pr-11 text-sm outline-none focus:border-cyan"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                    title={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                    className="absolute right-1 top-1/2 flex h-8 w-9 -translate-y-1/2 items-center justify-center rounded-md text-text-dim transition-colors hover:text-text"
+                  >
+                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
                 <p className="mt-1.5 text-[11px] text-text-dim">{t("login.passwordHint")}</p>
               </div>
               <div>

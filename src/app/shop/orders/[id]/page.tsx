@@ -9,6 +9,8 @@ import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
 import { CancelWindow } from "@/components/shop/CancelWindow";
 import { SupportSheet } from "@/components/shop/SupportSheet";
+import { DeliveryCodeCard, DisputeCard } from "@/components/shop/DeliveryProof";
+import { formatDateTime } from "@/lib/datetime";
 import type { Tables } from "@/lib/supabase/types";
 
 type Rider = Tables<"riders"> & { profiles?: { name: string } | null };
@@ -65,7 +67,7 @@ function Confetti() {
 
 export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [justDelivered, setJustDelivered] = useState(false);
@@ -135,6 +137,12 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
   const accent: "amber" | "cyan" | "success" = isDelivered ? "success" : active >= 2 ? "cyan" : "amber";
   const items = Array.isArray(order.items) ? (order.items as { name: string; qty: number; price: number }[]) : [];
   const rider = order.riders ?? null;
+  const stepTimestamps: Record<string, string | null> = {
+    placed: order.created_at,
+    offered: order.offered_at,
+    assigned: order.accepted_at,
+    delivered: order.delivered_at,
+  };
 
   return (
     <div className="relative min-h-screen pb-10">
@@ -146,7 +154,9 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           ←
         </Link>
         <div>
-          <p className="text-[11px] text-text-dim">{t("tracking.orderNumber")} #{order.id.slice(0, 8)}</p>
+          <p className="text-[11px] text-text-dim">
+            {t("tracking.orderNumber")} #{order.id.slice(0, 8)} · {formatDateTime(order.created_at, lang)}
+          </p>
           <motion.h1
             key={order.status}
             initial={{ opacity: 0, y: -6 }}
@@ -159,16 +169,16 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
       </header>
 
       <main className="mx-auto max-w-lg space-y-5 p-5">
-        <AnimatePresence>
-          {!isCancelled && !isDelivered && (
-            <CancelWindow
-              key="cancel-window"
-              createdAt={order.created_at}
-              orderId={order.id}
-              onCancelled={() => setOrder((prev) => (prev ? { ...prev, status: "cancelled" } : prev))}
-            />
-          )}
-        </AnimatePresence>
+        {/* Same reason as the rider sheets: a plain component inside
+            AnimatePresence can be left behind in the DOM after it unmounts,
+            and a stale "free cancellation" timer is worse than no animation. */}
+        {!isCancelled && !isDelivered && (
+          <CancelWindow
+            createdAt={order.created_at}
+            orderId={order.id}
+            onCancelled={() => setOrder((prev) => (prev ? { ...prev, status: "cancelled" } : prev))}
+          />
+        )}
 
         {isCancelled && (
           <motion.div
@@ -180,6 +190,10 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
               ? t("tracking.cancelledByYou")
               : t("tracking.cancelled.body")}
           </motion.div>
+        )}
+
+        {!isCancelled && !isDelivered && (order.status === "offered" || order.status === "assigned") && (
+          <DeliveryCodeCard code={order.delivery_code} />
         )}
 
         {isCancelled ? null : rider ? (
@@ -257,7 +271,12 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
               >
                 {i <= active ? step.icon : i + 1}
               </motion.span>
-              <p className={`text-sm font-semibold ${i > active ? "text-text-dim" : ""}`}>{t(step.labelKey)}</p>
+              <div>
+                <p className={`text-sm font-semibold ${i > active ? "text-text-dim" : ""}`}>{t(step.labelKey)}</p>
+                {stepTimestamps[step.key] && (
+                  <p className="text-[11px] text-text-dim">{formatDateTime(stepTimestamps[step.key], lang)}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -282,6 +301,16 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           <h2 className="mb-1 font-display text-sm font-semibold">{t("tracking.deliveringTo")}</h2>
           <p className="text-sm text-text-dim">{order.address}</p>
         </section>
+
+        {isDelivered && (
+          <DisputeCard
+            orderId={order.id}
+            disputeStatus={order.dispute_status}
+            onFiled={() =>
+              setOrder((prev) => (prev ? { ...prev, dispute_status: "open" } : prev))
+            }
+          />
+        )}
 
         <SupportSheet orderId={order.id} />
       </main>

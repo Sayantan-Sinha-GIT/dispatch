@@ -77,7 +77,7 @@ export function CancelWindow({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, height: 0 }}
+      exit={{ opacity: 0 }}
       className="overflow-hidden rounded-2xl border border-amber/40 bg-amber/5 p-4"
     >
       <div className="flex items-center justify-between gap-3">
@@ -114,9 +114,9 @@ export function CancelWindow({
         {error && (
           <motion.p
             key="cancel-error"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="mt-2 text-xs text-danger"
           >
             {error}

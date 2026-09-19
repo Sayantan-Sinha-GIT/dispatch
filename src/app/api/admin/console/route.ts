@@ -151,38 +151,34 @@ async function executeAction(
       return { ok: true, message: `Sent "${res.address}" to ${res.riderName}.` };
     }
 
-    case "mark_delivered": {
-      const { data: order } = await admin
-        .from("orders")
-        .select("address, assigned_rider_id, payout_amount, status")
-        .eq("id", action.orderId!)
-        .maybeSingle();
-      if (!order) return { ok: false, message: "Order not found" };
-      if (order.status === "delivered") return { ok: false, message: "Already delivered" };
-
-      const { error } = await admin
-        .from("orders")
-        .update({ status: "delivered" })
-        .eq("id", action.orderId!);
+    case "mark_delivered":
+    case "set_order_status": {
+      // Both go through the same guarded function: it moves the order, keeps
+      // delivered_at honest, and credits or un-credits the rider so a status
+      // flipped in the console can't leave a rider paid for a delivery that is
+      // back on the road.
+      const target = action.kind === "mark_delivered" ? "delivered" : action.status!;
+      const { data, error } = await admin.rpc("admin_set_order_status", {
+        p_order_id: action.orderId!,
+        p_status: target,
+      });
       if (error) return { ok: false, message: error.message };
-
-      if (order.assigned_rider_id) {
-        const { data: rider } = await admin
-          .from("riders")
-          .select("total_deliveries, total_earnings")
-          .eq("id", order.assigned_rider_id)
-          .maybeSingle();
-        if (rider) {
-          await admin
-            .from("riders")
-            .update({
-              total_deliveries: (rider.total_deliveries ?? 0) + 1,
-              total_earnings: Number(rider.total_earnings ?? 0) + Number(order.payout_amount ?? 0),
-            })
-            .eq("id", order.assigned_rider_id);
-        }
+      const res = data as { ok?: boolean; error?: string; address?: string; previous?: string };
+      if (!res?.ok) {
+        const reasons: Record<string, string> = {
+          not_found: "Order not found",
+          no_rider: "That order has no rider, so it can't be set to assigned",
+          already_in_status: `Order is already ${target}`,
+          invalid_status: "Not a status an admin can set",
+        };
+        return { ok: false, message: reasons[res?.error ?? ""] ?? "Could not change that order's status" };
       }
-      return { ok: true, message: `Marked "${order.address}" delivered.` };
+      // Anything landing back in the pool should be re-planned immediately.
+      if (target === "pending") await runDispatchTick(admin);
+      return {
+        ok: true,
+        message: `"${res.address}" moved from ${res.previous} to ${target}.`,
+      };
     }
 
     case "suspend_rider": {

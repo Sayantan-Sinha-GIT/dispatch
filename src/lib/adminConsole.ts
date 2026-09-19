@@ -8,7 +8,15 @@ import type { ParsedOrder } from "@/lib/gemini";
  * drawn from a snapshot we hand it, and the server re-validates everything.
  */
 
-export const DESTRUCTIVE_KINDS = ["cancel_order", "delete_order", "suspend_rider"] as const;
+export const DESTRUCTIVE_KINDS = [
+  "cancel_order",
+  "delete_order",
+  "suspend_rider",
+  "set_order_status",
+] as const;
+
+/** The states an admin may move an order to by hand. */
+export const SETTABLE_STATUSES = ["pending", "assigned", "delivered", "cancelled"] as const;
 
 export type ConsoleActionKind =
   | "create_orders"
@@ -17,6 +25,7 @@ export type ConsoleActionKind =
   | "reassign_order"
   | "force_assign_order"
   | "mark_delivered"
+  | "set_order_status"
   | "suspend_rider"
   | "unsuspend_rider"
   | "set_rider_capacity"
@@ -31,6 +40,7 @@ export interface ConsoleAction {
   minutes?: number | null;
   capacity?: number | null;
   text?: string | null;
+  status?: string | null;
   orders?: ParsedOrder[] | null;
 }
 
@@ -78,6 +88,7 @@ const responseSchema: Schema = {
           minutes: { type: SchemaType.NUMBER, nullable: true },
           capacity: { type: SchemaType.NUMBER, nullable: true },
           text: { type: SchemaType.STRING, nullable: true },
+          status: { type: SchemaType.STRING, nullable: true },
           orders: {
             type: SchemaType.ARRAY,
             nullable: true,
@@ -156,6 +167,7 @@ Available action kinds:
 - "reassign_order": pull an order back to the pending pool so the optimizer re-plans it. Needs orderId.
 - "force_assign_order": send a specific order to a specific rider. Needs orderId AND riderId.
 - "mark_delivered": mark an order delivered. Needs orderId.
+- "set_order_status": move an order to a specific state by hand. Needs orderId and status, one of: pending, assigned, delivered, cancelled. Use this when the admin names a state explicitly ("set order X back to pending", "mark this one as not delivered", "put it back on the road"). "not delivered" / "never arrived" means status "pending" so the order is re-planned to a rider.
 - "suspend_rider": block a rider from new offers. Needs riderId and minutes (default 30).
 - "unsuspend_rider": lift a suspension. Needs riderId.
 - "set_rider_capacity": change how many orders a rider can hold. Needs riderId and capacity.
@@ -209,6 +221,7 @@ export function validateActions(
       "reassign_order",
       "force_assign_order",
       "mark_delivered",
+      "set_order_status",
     ].includes(action.kind);
     const needsRider = ["force_assign_order", "suspend_rider", "unsuspend_rider", "set_rider_capacity"].includes(
       action.kind,
@@ -245,6 +258,16 @@ export function validateActions(
       }
       action.minutes = mins;
     }
+    if (action.kind === "set_order_status") {
+      const status = (action.status ?? "").trim().toLowerCase();
+      if (!(SETTABLE_STATUSES as readonly string[]).includes(status)) {
+        rejected.push(
+          `set_order_status: status must be one of ${SETTABLE_STATUSES.join(", ")} (got ${JSON.stringify(action.status)})`,
+        );
+        continue;
+      }
+      action.status = status;
+    }
     if (action.kind === "create_orders" && (!action.orders || action.orders.length === 0)) {
       rejected.push("create_orders: no orders were extracted");
       continue;
@@ -280,6 +303,8 @@ export function describeAction(
       return `Send ${orderLabel} to ${riderLabel}`;
     case "mark_delivered":
       return `Mark ${orderLabel} delivered`;
+    case "set_order_status":
+      return `Set ${orderLabel} to "${action.status}"`;
     case "suspend_rider":
       return `Suspend ${riderLabel} for ${action.minutes ?? 30} minutes`;
     case "unsuspend_rider":

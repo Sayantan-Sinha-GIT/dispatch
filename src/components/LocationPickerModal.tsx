@@ -87,12 +87,25 @@ export function LocationPickerModal({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geocodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Move the pin to a chosen point.
+   *
+   * The map is asked to fly there *and* the centre is committed immediately.
+   * Relying on the map's `moveend` alone meant a confirmed pin could still be
+   * the location the map opened at — a customer who searched for a Kolkata
+   * street could place an order against the previous coordinates entirely.
+   */
+  function moveTo(lat: number, lng: number) {
+    setFlyTo({ lat, lng, token: Date.now() });
+    handleCenterChange(lat, lng);
+  }
+
   function useMyLocation() {
     setLocating(true);
     setError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setFlyTo({ lat: pos.coords.latitude, lng: pos.coords.longitude, token: Date.now() });
+        moveTo(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
       },
       (err) => {
@@ -195,7 +208,7 @@ export function LocationPickerModal({
                         key={i}
                         type="button"
                         onClick={() => {
-                          setFlyTo({ lat: s.lat, lng: s.lng, token: Date.now() });
+                          moveTo(s.lat, s.lng);
                           setQuery(s.label);
                           setSuggestions([]);
                         }}

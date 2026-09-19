@@ -5,6 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/LanguageProvider";
+import { formatDateTime } from "@/lib/datetime";
+import { isActiveOrder } from "@/lib/orderStatus";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -12,7 +14,7 @@ type Order = Tables<"orders">;
 
 
 export default function ShopOrdersPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
@@ -54,6 +56,13 @@ export default function ShopOrdersPage() {
           ←
         </Link>
         <h1 className="font-display text-lg font-semibold">{t("orders.myOrders")}</h1>
+        {orders && (
+          <span className="ml-auto rounded-full bg-surface-raised px-2.5 py-1 text-[11px] text-text-dim">
+            {t("orders.activeCount", {
+              count: orders.filter((o) => isActiveOrder(o.status)).length,
+            })}
+          </span>
+        )}
       </header>
 
       <main className="mx-auto max-w-lg space-y-2.5 p-5">
@@ -71,7 +80,7 @@ export default function ShopOrdersPage() {
               <div>
                 <p className="text-sm font-medium">{o.address}</p>
                 <p className="text-xs text-text-dim">
-                  ₹{o.total_amount} · {new Date(o.created_at).toLocaleDateString()}
+                  ₹{o.total_amount} · {formatDateTime(o.created_at, lang)}
                 </p>
               </div>
               <span className="rounded-full bg-amber/15 px-2.5 py-1 text-[10px] font-semibold uppercase text-amber">

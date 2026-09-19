@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { haversineDistanceKm } from "@/lib/routing/haversine";
 import { optimizeRoutes } from "@/lib/routing/optimizer";
 import { quotePayout } from "@/lib/pricing";
+import { MAX_OFFER_DISTANCE_KM, isWithinServiceRange } from "@/lib/serviceArea";
 import type { RoutingOrder, RoutingRider } from "@/lib/routing/types";
 import type { Database } from "@/lib/supabase/types";
 
@@ -113,7 +114,7 @@ async function findReplacementRider(
   const withCapacity = riders.filter((r) => (loadByRider.get(r.id) ?? 0) < r.capacity);
   if (withCapacity.length === 0) return null;
 
-  let best = withCapacity[0];
+  let best: (typeof withCapacity)[number] | null = null;
   let bestDist = Infinity;
   for (const rider of withCapacity) {
     const dist = haversineDistanceKm(riderOrigin(rider), order);
@@ -122,6 +123,10 @@ async function findReplacementRider(
       best = rider;
     }
   }
+
+  // Nearest is not the same as near enough. If the closest rider with room is
+  // still outside the service radius, the order waits rather than travelling.
+  if (!best || !isWithinServiceRange(bestDist)) return null;
 
   return { rider: best, sequenceBase: loadByRider.get(best.id) ?? 0, distanceKm: bestDist };
 }
@@ -193,7 +198,14 @@ export async function offerOrderToRider(
 export async function assignPendingOrders(admin: AdminClient) {
   const { data: pendingOrders } = await admin.from("orders").select("*").eq("status", "pending");
   if (!pendingOrders || pendingOrders.length === 0) {
-    return { assigned: 0, considered: 0, totalDistanceKm: 0, baselineDistanceKm: 0, noRiders: false };
+    return {
+      assigned: 0,
+      considered: 0,
+      totalDistanceKm: 0,
+      baselineDistanceKm: 0,
+      noRiders: false,
+      outOfRange: 0,
+    };
   }
 
   const { riders, loadByRider } = await loadAvailableRiders(admin);
@@ -206,10 +218,31 @@ export async function assignPendingOrders(admin: AdminClient) {
       totalDistanceKm: 0,
       baselineDistanceKm: 0,
       noRiders: true,
+      outOfRange: 0,
     };
   }
 
-  const routingOrders: RoutingOrder[] = pendingOrders.map((o) => ({
+  // Orders with no rider inside the service radius are dropped before routing,
+  // not after: feeding a 1500 km stop to the solver drags the whole plan toward
+  // it and produces routes nobody can ride.
+  const riderOrigins = withCapacity.map((r) => riderOrigin(r));
+  const reachable = pendingOrders.filter((o) =>
+    riderOrigins.some((origin) => isWithinServiceRange(haversineDistanceKm(origin, o))),
+  );
+  const outOfRange = pendingOrders.length - reachable.length;
+
+  if (reachable.length === 0) {
+    return {
+      assigned: 0,
+      considered: pendingOrders.length,
+      totalDistanceKm: 0,
+      baselineDistanceKm: 0,
+      noRiders: false,
+      outOfRange,
+    };
+  }
+
+  const routingOrders: RoutingOrder[] = reachable.map((o) => ({
     id: o.id,
     lat: o.lat,
     lng: o.lng,
@@ -229,7 +262,7 @@ export async function assignPendingOrders(admin: AdminClient) {
   });
 
   const result = optimizeRoutes(routingOrders, routingRiders);
-  const ordersById = new Map(pendingOrders.map((o) => [o.id, o]));
+  const ordersById = new Map(reachable.map((o) => [o.id, o]));
   const ridersById = new Map(withCapacity.map((r) => [r.id, r]));
 
   let assigned = 0;
@@ -243,6 +276,9 @@ export async function assignPendingOrders(admin: AdminClient) {
       const order = ordersById.get(stop.orderId);
       if (!order) continue;
       const distanceKm = haversineDistanceKm(origin, order);
+      // The solver may still route a reachable order to a rider who is not the
+      // near one, so the radius is re-checked per offer, not just per order.
+      if (!isWithinServiceRange(distanceKm)) continue;
       const ok = await offerOrderToRider(
         admin,
         order,
@@ -261,6 +297,7 @@ export async function assignPendingOrders(admin: AdminClient) {
     totalDistanceKm: result.totalDistanceKm,
     baselineDistanceKm: result.naiveBaselineDistanceKm,
     noRiders: false,
+    outOfRange,
   };
 }
 

@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
+import { formatDateTime } from "@/lib/datetime";
 import { CommandConsole } from "@/components/admin/CommandConsole";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -27,7 +28,7 @@ type Notification = Tables<"notifications">;
 export default function AdminDashboard() {
   const router = useRouter();
   const supabase = createClient();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [riders, setRiders] = useState<Rider[]>([]);
@@ -43,8 +44,6 @@ export default function AdminDashboard() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
-
-  useSweepPolling();
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 15000);
@@ -76,6 +75,8 @@ export default function AdminDashboard() {
     if (activityRes.data) setActivity(activityRes.data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useSweepPolling(20000, loadData);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load on mount, standard data-fetch pattern
@@ -298,7 +299,7 @@ export default function AdminDashboard() {
                     </span>
                     <span
                       className={`text-[10px] uppercase ${isLive ? "text-success" : "text-text-dim"}`}
-                      title={isLive ? "GPS updated within the last 2 minutes" : t("admin.tip.gpsStale")}
+                      title={isLive ? t("admin.tip.gpsLive") : t("admin.tip.gpsStale")}
                     >
                       {isLive ? `● ${t("admin.liveGps")}` : t("admin.noGps")}
                     </span>
@@ -324,9 +325,9 @@ export default function AdminDashboard() {
             {message && (
               <motion.p
                 key="admin-message"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-text-dim"
               >
                 {message}
@@ -380,7 +381,7 @@ export default function AdminDashboard() {
                     layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    exit={{ opacity: 0 }}
                     className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 text-xs transition-colors ${
                       focusOrderId === order.id ? "border-cyan/60 bg-cyan/10" : "border-transparent bg-surface-raised"
                     }`}
@@ -392,8 +393,23 @@ export default function AdminDashboard() {
                       }}
                       className="flex min-w-0 flex-grow items-center justify-between gap-2 px-1.5 py-1 text-left hover:opacity-80"
                     >
-                      <span className="truncate pr-2">{order.address}</span>
-                      <StatusPill status={order.status} />
+                      <span className="min-w-0 truncate pr-2">
+                        <span className="block truncate">{order.address}</span>
+                        <span className="block text-[10px] text-text-dim">
+                          {formatDateTime(order.created_at, lang)}
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        {order.dispute_status === "open" && (
+                          <span
+                            title={t("admin.tip.disputed")}
+                            className="rounded-full bg-danger/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-danger"
+                          >
+                            {t("admin.disputed")}
+                          </span>
+                        )}
+                        <StatusPill status={order.status} />
+                      </span>
                     </button>
                     {(order.status === "assigned" || order.status === "offered") && (
                       <motion.button

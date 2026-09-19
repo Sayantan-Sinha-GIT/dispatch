@@ -209,6 +209,11 @@ export type Database = {
           cancelled_by: string | null
           created_at: string
           customer_id: string | null
+          delivered_at: string | null
+          delivery_code: string
+          dispute_reason: string | null
+          dispute_status: string | null
+          disputed_at: string | null
           delivery_fee: number | null
           id: string
           items: Json | null
@@ -236,6 +241,11 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           customer_id?: string | null
+          delivered_at?: string | null
+          delivery_code?: string
+          dispute_reason?: string | null
+          dispute_status?: string | null
+          disputed_at?: string | null
           delivery_fee?: number | null
           id?: string
           items?: Json | null
@@ -263,6 +273,11 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           customer_id?: string | null
+          delivered_at?: string | null
+          delivery_code?: string
+          dispute_reason?: string | null
+          dispute_status?: string | null
+          disputed_at?: string | null
           delivery_fee?: number | null
           id?: string
           items?: Json | null
@@ -444,7 +459,19 @@ export type Database = {
       current_rider_id: { Args: never; Returns: string }
       decline_offer: { Args: { p_order_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
-      mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }
+      mark_order_delivered: {
+        Args: { p_code: string; p_order_id: string }
+        Returns: Json
+      }
+      admin_set_order_status: {
+        Args: { p_order_id: string; p_status: string }
+        Returns: Json
+      }
+      report_order_not_delivered: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: Json
+      }
+      set_my_depot: { Args: { lat: number; lng: number }; Returns: undefined }
       register_missed_offer: {
         Args: {
           p_rider_id: string

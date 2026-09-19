@@ -7,9 +7,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cartSubtotal, clearCart, getCart, setQty, type CartItem } from "@/lib/cart";
 import { LocationPickerModal } from "@/components/LocationPickerModal";
 import { useLanguage } from "@/components/LanguageProvider";
+import { createClient } from "@/lib/supabase/client";
 
 const DELIVERY_FEE = 25;
-const DEFAULT_CENTER = { lat: 12.9716, lng: 77.5946 };
+/**
+ * Last-resort map centre, used only when we know nothing about the customer:
+ * no previous order and no location permission. It is a placeholder to open a
+ * map on, never a place we would deliver to — a hardcoded city here is how a
+ * Kolkata customer ended up with a Bengaluru pin.
+ */
+const FALLBACK_CENTER = { lat: 22.5726, lng: 88.3639 };
 
 export default function ShopCartPage() {
   const router = useRouter();
@@ -21,6 +28,7 @@ export default function ShopCartPage() {
   const [landmark, setLandmark] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [mapSeed, setMapSeed] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submittingRef = useRef(false);
@@ -30,6 +38,50 @@ export default function ShopCartPage() {
     const onUpdate = () => setCart(getCart());
     window.addEventListener("cart-updated", onUpdate);
     return () => window.removeEventListener("cart-updated", onUpdate);
+  }, []);
+
+  // Open the map somewhere the customer plausibly is: their last delivery
+  // address first (people reorder to the same place), then the device's own
+  // position. Neither is treated as a confirmed pin — they only decide where
+  // the map opens, and the customer still has to confirm.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const { data: previous } = await supabase
+        .from("orders")
+        .select("lat, lng")
+        .eq("customer_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (previous) {
+        setMapSeed({ lat: previous.lat, lng: previous.lng });
+        return;
+      }
+      if (!("geolocation" in navigator)) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (!cancelled) setMapSeed({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          // Denied or unavailable: the fallback centre stands.
+        },
+        { timeout: 8000 },
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handlePlaceOrder() {
@@ -201,8 +253,8 @@ export default function ShopCartPage() {
         {pickerOpen && (
           <LocationPickerModal
             key="location-picker"
-            initialLat={coords?.lat ?? DEFAULT_CENTER.lat}
-            initialLng={coords?.lng ?? DEFAULT_CENTER.lng}
+            initialLat={coords?.lat ?? mapSeed?.lat ?? FALLBACK_CENTER.lat}
+            initialLng={coords?.lng ?? mapSeed?.lng ?? FALLBACK_CENTER.lng}
             onClose={() => setPickerOpen(false)}
             onConfirm={(lat, lng, guess) => {
               setCoords({ lat, lng });

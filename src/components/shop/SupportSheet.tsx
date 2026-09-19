@@ -62,7 +62,7 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
             <motion.div
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0 }}
+              exit={{ y: 24, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md rounded-t-3xl border border-border bg-surface p-5 sm:rounded-3xl"

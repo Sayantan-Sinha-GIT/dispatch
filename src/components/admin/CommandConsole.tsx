@@ -158,9 +158,9 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
         {pending.length > 0 && (
           <motion.div
             key="pending-confirm"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="mt-3 overflow-hidden"
           >
             <div className="rounded-xl border border-danger/40 bg-danger/5 p-3">

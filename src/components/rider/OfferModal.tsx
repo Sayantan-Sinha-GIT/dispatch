@@ -57,13 +57,13 @@ export function OfferModal({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={{ opacity: 0, transition: { duration: 0.18 } }}
       className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
     >
       <motion.div
         initial={{ y: "100%", opacity: 0, scale: 0.98 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
+        exit={{ y: 24, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
         transition={{ type: "spring", stiffness: 320, damping: 32 }}
         className="relative w-full max-w-md overflow-hidden rounded-t-3xl border-2 border-amber bg-surface shadow-2xl shadow-amber/20 sm:rounded-3xl"
       >
@@ -149,9 +149,9 @@ export function OfferModal({
             {showBreakdown && (
               <motion.div
                 key="payout-breakdown"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="overflow-hidden"
               >
                 <div className="mt-2 space-y-1 rounded-xl bg-surface-raised p-3 text-xs">

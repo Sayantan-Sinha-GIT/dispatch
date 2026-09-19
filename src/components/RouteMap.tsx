@@ -211,7 +211,7 @@ export function RouteMap({
       ? [riders[0].depot_lat, riders[0].depot_lng]
       : orders.length > 0
         ? [orders[0].lat, orders[0].lng]
-        : [12.9716, 77.5946],
+        : [22.5726, 88.3639],
   );
 
   const allPoints = useMemo<[number, number][]>(

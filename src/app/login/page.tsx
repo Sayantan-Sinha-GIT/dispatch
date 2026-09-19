@@ -9,6 +9,7 @@ import { AuthBackground } from "@/components/AuthBackground";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
+import { EyeIcon, EyeOffIcon } from "@/components/Icons";
 
 type Role = "customer" | "rider" | "admin";
 
@@ -455,19 +456,36 @@ function FormField({
   placeholder: string;
   accent: "amber" | "cyan";
 }) {
+  const { t } = useLanguage();
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = type === "password";
+
   return (
     <div>
       <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">{label}</label>
-      <input
-        type={type}
-        required
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none transition-colors ${
-          accent === "amber" ? "focus:border-amber" : "focus:border-cyan"
-        }`}
-      />
+      <div className="relative">
+        <input
+          type={isPassword && revealed ? "text" : type}
+          required
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full rounded-lg border border-border bg-surface-raised py-2.5 pl-3.5 text-sm outline-none transition-colors ${
+            isPassword ? "pr-11" : "pr-3.5"
+          } ${accent === "amber" ? "focus:border-amber" : "focus:border-cyan"}`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((r) => !r)}
+            aria-label={revealed ? t("login.hidePassword") : t("login.showPassword")}
+            title={revealed ? t("login.hidePassword") : t("login.showPassword")}
+            className="absolute right-1 top-1/2 flex h-8 w-9 -translate-y-1/2 items-center justify-center rounded-md text-text-dim transition-colors hover:text-text"
+          >
+            {revealed ? <EyeOffIcon /> : <EyeIcon />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

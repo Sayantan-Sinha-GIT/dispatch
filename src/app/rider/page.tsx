@@ -10,6 +10,9 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { OfferModal } from "@/components/rider/OfferModal";
+import { LocationControl } from "@/components/rider/LocationControl";
+import { DeliverConfirm } from "@/components/rider/DeliverConfirm";
+import { formatDateTime } from "@/lib/datetime";
 import { StatCounter } from "@/components/StatCounter";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useSweepPolling } from "@/lib/useSweepPolling";
@@ -22,7 +25,7 @@ type Rider = Tables<"riders">;
 export default function RiderDashboard() {
   const router = useRouter();
   const supabase = createClient();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [rider, setRider] = useState<Rider | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -33,8 +36,9 @@ export default function RiderDashboard() {
   const [declining, setDeclining] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  useSweepPolling();
+  const [deliveringOrder, setDeliveringOrder] = useState<Order | null>(null);
+  const [deliverError, setDeliverError] = useState<string | null>(null);
+  const [deliverSubmitting, setDeliverSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
     const {
@@ -59,6 +63,8 @@ export default function RiderDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useSweepPolling(20000, loadData);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load on mount, standard data-fetch pattern
     loadData();
@@ -66,6 +72,10 @@ export default function RiderDashboard() {
       .channel("rider-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "riders" }, () => loadData())
+      // An order taken away stops matching this rider's RLS policy in the same
+      // statement that removes it, so no orders event arrives. The notification
+      // written alongside it does, and is the reliable signal.
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => loadData())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -161,17 +171,34 @@ export default function RiderDashboard() {
     setDeclining(null);
   }
 
-  async function markDelivered(orderId: string) {
-    setErrorMsg(null);
-    const { data, error } = await supabase.rpc("mark_order_delivered", { p_order_id: orderId });
-    const result = data as { ok?: boolean } | null;
-    if (error || !result?.ok) setErrorMsg(t("rider.err.markDelivered"));
+  async function markDelivered(code: string) {
+    if (!deliveringOrder) return;
+    setDeliverError(null);
+    setDeliverSubmitting(true);
+    const { data, error } = await supabase.rpc("mark_order_delivered", {
+      p_order_id: deliveringOrder.id,
+      p_code: code,
+    });
+    const result = data as { ok?: boolean; error?: string } | null;
+    setDeliverSubmitting(false);
+
+    if (error || !result?.ok) {
+      // A wrong code is an everyday mistake, not a system failure, so it stays
+      // inside the sheet and the rider can simply retype it.
+      setDeliverError(result?.error === "bad_code" ? t("rider.deliver.badCode") : t("rider.err.markDelivered"));
+      return;
+    }
+    setDeliveringOrder(null);
     loadData();
   }
 
   const offered = orders.filter((o) => o.status === "offered");
   const remaining = orders.filter((o) => o.status === "assigned");
   const done = orders.filter((o) => o.status === "delivered");
+  // "Active" is exactly the work still owed: an offer waiting on a decision
+  // plus an accepted run. Delivered and cancelled are neither, which is why
+  // this is derived here once rather than counted differently per panel.
+  const activeCount = offered.length + remaining.length;
   const isActive = rider?.status === "active";
   const isSuspended = !!rider?.suspended_until && new Date(rider.suspended_until).getTime() > now;
   const earnings = done.reduce((sum, o) => sum + Number(o.payout_amount ?? 0), 0);
@@ -270,23 +297,44 @@ export default function RiderDashboard() {
       </header>
 
       {/* One offer at a time, front and centre — a rider glancing at this
-          between stops shouldn't have to pick out of a list. */}
-      <AnimatePresence>
-        {offered.length > 0 && (
-          <OfferModal
-            key={offered[0].id}
-            order={offered[0]}
-            now={now}
-            onAccept={() => acceptOrder(offered[0].id)}
-            onDecline={() => declineOrder(offered[0].id)}
-            accepting={accepting === offered[0].id}
-            declining={declining === offered[0].id}
-            queuedCount={offered.length - 1}
-          />
-        )}
-      </AnimatePresence>
+          between stops shouldn't have to pick out of a list.
 
-      <div className="mx-4 mt-4 h-56 overflow-hidden rounded-2xl border border-border shadow-xl shadow-black/10">
+          Deliberately not wrapped in AnimatePresence: its direct child would be
+          a plain component, which never reports that its exit finished, so the
+          sheet is left in the DOM frozen on its last render. A stuck offer
+          sheet covers the entire app. Entrance animation, no exit. */}
+      {offered.length > 0 && (
+        <OfferModal
+          key={offered[0].id}
+          order={offered[0]}
+          now={now}
+          onAccept={() => acceptOrder(offered[0].id)}
+          onDecline={() => declineOrder(offered[0].id)}
+          accepting={accepting === offered[0].id}
+          declining={declining === offered[0].id}
+          queuedCount={offered.length - 1}
+        />
+      )}
+
+      {deliveringOrder && (
+        <DeliverConfirm
+          key={deliveringOrder.id}
+          address={deliveringOrder.address}
+          submitting={deliverSubmitting}
+          error={deliverError}
+          onConfirm={markDelivered}
+          onCancel={() => {
+            setDeliveringOrder(null);
+            setDeliverError(null);
+          }}
+        />
+      )}
+
+      <div className="mx-4 mt-4 space-y-3">
+        {rider && <LocationControl rider={rider} onChanged={loadData} />}
+      </div>
+
+      <div className="mx-4 mt-3 h-56 overflow-hidden rounded-2xl border border-border shadow-xl shadow-black/10">
         {rider && (
           <RouteMapClient
             orders={orders
@@ -316,9 +364,14 @@ export default function RiderDashboard() {
       </div>
 
       <main className="space-y-3 p-4">
-        <p className="text-sm text-text-dim">
-          {remaining.length} {t("rider.stopsInProgress")}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-text-dim">
+            {remaining.length} {t("rider.stopsInProgress")}
+          </p>
+          <span className="rounded-full bg-surface-raised px-2.5 py-1 text-[11px] text-text-dim">
+            {t("rider.activeOrders", { count: activeCount })}
+          </span>
+        </div>
 
         {remaining.map((order, idx) => (
           <motion.div
@@ -334,11 +387,20 @@ export default function RiderDashboard() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{order.address}</p>
-              <p className="text-xs text-text-dim">{order.weight} {t("common.kg")}</p>
+              <p className="text-xs text-text-dim">
+                {order.weight} {t("common.kg")} · ₹{Math.round(Number(order.payout_amount ?? 0))} ·{" "}
+                {order.payout_distance_km ?? 0} {t("common.km")}
+              </p>
+              <p className="mt-0.5 text-[11px] text-text-dim">
+                {t("rider.placedAt", { when: formatDateTime(order.created_at, lang) })}
+              </p>
             </div>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={() => markDelivered(order.id)}
+              onClick={() => {
+                setDeliverError(null);
+                setDeliveringOrder(order);
+              }}
               className="shrink-0 rounded-xl bg-success/20 px-3.5 py-2.5 text-xs font-semibold text-success"
             >
               {t("rider.deliveredBtn")}
@@ -377,11 +439,11 @@ export default function RiderDashboard() {
             <summary className="cursor-pointer text-xs text-text-dim">{t("rider.deliveredToday", { count: done.length })}</summary>
             <div className="mt-2 space-y-1.5">
               {done.map((order) => (
-                <div
-                  key={order.id}
-                  className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-text-dim line-through"
-                >
-                  {order.address}
+                <div key={order.id} className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-text-dim">
+                  <span className="line-through">{order.address}</span>
+                  <span className="ml-2 whitespace-nowrap text-[11px]">
+                    {formatDateTime(order.delivered_at ?? order.created_at, lang)}
+                  </span>
                 </div>
               ))}
             </div>
