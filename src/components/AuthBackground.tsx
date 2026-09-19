@@ -44,8 +44,15 @@ export function AuthBackground({ accent = "amber" }: { accent?: "amber" | "cyan"
         />
         <motion.circle
           r="5"
+          // Positioned by offsetPath, but SVG still needs a declared origin —
+          // otherwise cx/cy are written as "undefined" on every frame.
+          cx={0}
+          cy={0}
           fill={accent === "amber" ? "#ffb020" : "#2dd4c4"}
+          initial={{ cx: 0, cy: 0, offsetDistance: "0%" }}
           animate={{
+            cx: 0,
+            cy: 0,
             offsetDistance: ["0%", "100%"],
           }}
           style={{ offsetPath: "path('M -50 650 C 150 550, 250 700, 400 550 S 650 350, 850 400')" }}

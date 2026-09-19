@@ -445,6 +445,11 @@ function LiveConsolePreview() {
               <motion.circle
                 r="4"
                 fill="#ffb020"
+                // cx/cy must exist before they can be animated. Without them the
+                // browser is handed cx="undefined" on every frame.
+                cx={30}
+                cy={180}
+                initial={{ cx: 30, cy: 180 }}
                 animate={{ cx: [30, 210, 370], cy: [180, 100, 60] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
               />
