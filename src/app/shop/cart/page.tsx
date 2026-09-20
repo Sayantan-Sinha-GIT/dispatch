@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cartSubtotal, clearCart, getCart, setQty, type CartItem } from "@/lib/cart";
@@ -135,7 +136,10 @@ export default function ShopCartPage() {
 
       <main className="mx-auto max-w-lg space-y-5 p-5">
         {cart.length === 0 ? (
-          <p className="py-16 text-center text-sm text-text-dim">{t("cart.empty")}</p>
+          <div className="flex flex-col items-center py-16">
+            <Image src="/images/empty/cart.webp" alt="" width={150} height={150} className="mb-4 opacity-70" />
+            <p className="text-center text-sm text-text-dim">{t("cart.empty")}</p>
+          </div>
         ) : (
           <div className="space-y-2.5">
             {cart.map((item) => (

@@ -10,6 +10,18 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
+import { ProductImage } from "@/components/shop/ProductImage";
+import Image from "next/image";
+
+/** Lower-case slug per category, matching the delivered artwork. */
+const CATEGORY_IMAGE: Record<string, string> = {
+  Bakery: "/images/categories/bakery.webp",
+  Beverages: "/images/categories/beverages.webp",
+  Dairy: "/images/categories/dairy.webp",
+  Produce: "/images/categories/produce.webp",
+  Snacks: "/images/categories/snacks.webp",
+  Staples: "/images/categories/staples.webp",
+};
 
 type Product = Tables<"products">;
 
@@ -95,18 +107,48 @@ export default function ShopCatalogPage() {
           />
         </div>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {categories.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                category === c ? "bg-amber text-bg" : "border border-border bg-surface-raised text-text-dim hover:text-text"
-              }`}
-            >
-              {c === "All" ? t("shop.all") : c}
-            </button>
-          ))}
+        <div className="-mx-4 mt-3.5 flex gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {categories.map((c, i) => {
+            const img = CATEGORY_IMAGE[c];
+            const active = category === c;
+            return (
+              <motion.button
+                key={c}
+                onClick={() => setCategory(c)}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04, type: "spring", stiffness: 220, damping: 24 }}
+                whileTap={{ scale: 0.95 }}
+                className={`group relative h-16 w-28 shrink-0 overflow-hidden rounded-2xl text-left ring-1 transition-all duration-300 ${
+                  active ? "ring-2 ring-amber" : "ring-border/70 hover:ring-amber/50"
+                }`}
+              >
+                {img ? (
+                  <Image
+                    src={img}
+                    alt=""
+                    fill
+                    sizes="112px"
+                    className={`object-cover transition-transform duration-500 group-hover:scale-110 ${
+                      active ? "scale-105" : ""
+                    }`}
+                  />
+                ) : (
+                  /* "All" has no photograph of its own - a soft wash keeps the
+                     row visually even instead of leaving one empty slot. */
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber/35 via-surface-raised to-cyan/25" />
+                )}
+                <div className={`absolute inset-0 transition-colors ${active ? "bg-black/35" : "bg-black/55 group-hover:bg-black/40"}`} />
+                <span
+                  className={`absolute bottom-2 left-2.5 text-xs font-bold drop-shadow-lg transition-colors ${
+                    active ? "text-amber" : "text-white"
+                  }`}
+                >
+                  {c === "All" ? t("shop.all") : c}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </header>
 
@@ -119,50 +161,81 @@ export default function ShopCatalogPage() {
                 <div className="h-3 w-1/2 rounded bg-surface-raised" />
               </div>
             ))
-          : filtered.map((p) => {
+          : filtered.map((p, i) => {
               const inCart = cart.find((c) => c.productId === p.id);
               return (
                 <motion.button
                   key={p.id}
                   type="button"
                   onClick={() => setViewing(p)}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -4 }}
-                  className={`rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors hover:border-amber/30 ${!p.in_stock ? "opacity-50" : ""}`}
+                  /* Capped so a long catalogue does not leave the last row
+                     waiting seconds to appear. */
+                  transition={{ delay: Math.min(i * 0.035, 0.45), type: "spring", stiffness: 190, damping: 24 }}
+                  whileHover={{ y: -6 }}
+                  className={`group relative overflow-hidden rounded-3xl bg-surface text-left shadow-lg shadow-black/25 ring-1 ring-border/70 transition-[box-shadow,transform] duration-300 hover:shadow-xl hover:shadow-amber/10 hover:ring-amber/40 ${!p.in_stock ? "opacity-55" : ""}`}
                 >
-                  <div className={`mb-2.5 h-20 w-full overflow-hidden rounded-xl bg-gradient-to-br ${p.image_gradient}`}>
-                    <motion.div whileHover={{ scale: 1.08 }} className="h-full w-full" />
-                  </div>
-                  <p className="text-sm font-semibold">{p.name}</p>
-                  <p className="mb-2 text-xs text-text-dim">
-                    {p.category} · {p.unit}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-display text-sm font-bold">₹{p.price}</span>
-                    {p.in_stock ? (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart({ productId: p.id, name: p.name, price: p.price, unit: p.unit });
-                        }}
-                        className="rounded-lg bg-amber/15 px-2.5 py-1 text-xs font-bold text-amber transition-colors hover:bg-amber/25"
-                      >
-                        {inCart ? `+ (${inCart.qty})` : t("shop.add")}
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-medium text-danger">
-                        {t("shop.outOfStock")}
-                      </span>
-                    )}
+                  <ProductImage
+                    src={p.image_url}
+                    gradient={p.image_gradient}
+                    alt={p.name}
+                    /* Two columns on a phone, four on a wide screen - tells the
+                       browser to fetch a ~50vw file on mobile, not a full one. */
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="aspect-square w-full"
+                  />
+
+                  {inCart && (
+                    <motion.span
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 18 }}
+                      className="absolute right-2.5 top-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-amber px-1.5 font-display text-xs font-bold text-bg shadow-lg"
+                    >
+                      {inCart.qty}
+                    </motion.span>
+                  )}
+
+                  <div className="p-3.5">
+                    <p className="truncate text-sm font-semibold">{p.name}</p>
+                    <p className="mb-2.5 truncate text-xs text-text-dim">
+                      {p.category} · {p.unit}
+                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-display text-base font-bold">₹{p.price}</span>
+                      {p.in_stock ? (
+                        <motion.span
+                          role="button"
+                          tabIndex={0}
+                          whileTap={{ scale: 0.88 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart({ productId: p.id, name: p.name, price: p.price, unit: p.unit });
+                          }}
+                          className="rounded-full bg-amber/15 px-3 py-1.5 text-xs font-bold text-amber transition-colors hover:bg-amber hover:text-bg"
+                        >
+                          {inCart ? `+ (${inCart.qty})` : t("shop.add")}
+                        </motion.span>
+                      ) : (
+                        <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-medium text-danger">
+                          {t("shop.outOfStock")}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </motion.button>
               );
             })}
         {!loading && filtered.length === 0 && (
-          <p className="col-span-full py-16 text-center text-sm text-text-dim">{t("shop.noMatch", { query })}</p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="col-span-full flex flex-col items-center py-16"
+          >
+            <Image src="/images/empty/no-results.webp" alt="" width={140} height={140} className="mb-4 opacity-70" />
+            <p className="text-center text-sm text-text-dim">{t("shop.noMatch", { query })}</p>
+          </motion.div>
         )}
       </main>
 
@@ -208,7 +281,16 @@ export default function ShopCatalogPage() {
               transition={{ type: "spring", damping: 26, stiffness: 300 }}
               className="w-full max-w-sm overflow-hidden rounded-t-3xl border border-border bg-surface sm:rounded-3xl"
             >
-              <div className={`relative h-48 w-full bg-gradient-to-br ${viewing.image_gradient}`}>
+              <div className="relative aspect-[4/3] w-full">
+                <ProductImage
+                  src={viewing.image_url}
+                  gradient={viewing.image_gradient}
+                  alt={viewing.name}
+                  sizes="(max-width: 640px) 100vw, 480px"
+                  priority
+                  zoomOnHover={false}
+                  className="h-full w-full"
+                />
                 <button
                   onClick={() => setViewing(null)}
                   className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur"

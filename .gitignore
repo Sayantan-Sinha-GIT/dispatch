@@ -48,3 +48,8 @@ next-env.d.ts
 
 # Local design references, not part of the app
 /design-inspire
+
+# Source artwork. ~70MB of full-size PNG that gets converted into
+# public/images as ~3.5MB of WebP. Git keeps every version of a binary
+# forever, so the originals stay local; the optimised output is what ships.
+/Images_X

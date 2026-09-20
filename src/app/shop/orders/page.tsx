@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -93,6 +94,7 @@ export default function ShopOrdersPage() {
         {orders?.length === 0 && (
           <div className="flex flex-col items-center py-16 text-center">
             <span className="mb-3 text-4xl">🛍️</span>
+            <Image src="/images/empty/orders.webp" alt="" width={150} height={150} className="mx-auto mb-4 opacity-70" />
             <p className="mb-4 text-sm text-text-dim">{t("orders.empty")}</p>
             <Link href="/shop" className="rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-bg">
               {t("hero.orderNow").replace(" →", "")}

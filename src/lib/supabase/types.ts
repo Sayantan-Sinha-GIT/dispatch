@@ -319,6 +319,7 @@ export type Database = {
           created_at: string
           id: string
           image_gradient: string
+          image_url: string | null
           in_stock: boolean
           name: string
           price: number
@@ -329,6 +330,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_gradient?: string
+          image_url?: string | null
           in_stock?: boolean
           name: string
           price: number
@@ -339,6 +341,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_gradient?: string
+          image_url?: string | null
           in_stock?: boolean
           name?: string
           price?: number
