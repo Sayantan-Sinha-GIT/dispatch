@@ -66,7 +66,23 @@ function UnifiedLogin() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const errCode = searchParams.get("err");
-  const [error, setError] = useState<string | null>(errCode ? t(`login.err.${errCode}`) : searchParams.get("error"));
+  /**
+   * Set when a sign-in succeeded but the account belongs to a different
+   * portal. Kept separate from `error` so the screen can offer the fix rather
+   * than only naming the problem.
+   */
+  const wrongRoleActual = errCode === "wrongRole" ? searchParams.get("actual") : null;
+  const panelOwnsError = customerMode === "verify" || recovery === "code";
+  const [error, setError] = useState<string | null>(
+    wrongRoleActual
+      ? t("login.err.wrongRole", {
+          actual: t(`login.role.${wrongRoleActual}`),
+          intent: t(`login.role.${initialRole}`),
+        })
+      : errCode
+        ? t(`login.err.${errCode}`)
+        : searchParams.get("error"),
+  );
   const [notice, setNotice] = useState<string | null>(
     searchParams.get("notice") === "verified"
       ? t("login.verifiedNotice")
@@ -388,6 +404,29 @@ function UnifiedLogin() {
           ))}
         </div>
 
+        {/* Above the gate on purpose. Anything rendered inside the email
+            form is invisible until someone opens it, and an OAuth failure
+            lands here with the form still shut - which reads as the provider
+            being broken rather than as the app declining. */}
+        {/* Stands down while a code panel is up: those render `error`
+            themselves, and VerifyCodeForm must keep doing so because rider
+            signup uses it on a page with no block like this one. */}
+        <div className="mb-4 empty:hidden">
+          {!panelOwnsError && <ErrorNotice error={error} />}
+          {notice && <SuccessNotice message={notice} />}
+          {wrongRoleActual && wrongRoleActual !== role && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => switchRole(wrongRoleActual as Role)}
+              className="mt-2 w-full rounded-lg border border-amber/40 bg-amber/10 py-2 text-xs font-semibold text-amber transition-colors hover:bg-amber/20"
+            >
+              {t("login.switchTo", { actual: t(`login.role.${wrongRoleActual}`) })}
+            </motion.button>
+          )}
+        </div>
+
         {/*
           No AnimatePresence here. `mode="wait"` holds the incoming panel back
           until the outgoing one reports its exit finished, and under
@@ -473,8 +512,6 @@ function UnifiedLogin() {
               <form onSubmit={handleSignIn("customer", "/shop")} className="space-y-4">
                 <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-                <ErrorNotice error={error} />
-                {notice && <SuccessNotice message={notice} />}
                 <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="amber" />
                 <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
                 <ForgotLink onClick={openRecovery} accent="amber" />
@@ -498,7 +535,6 @@ function UnifiedLogin() {
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
                 <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
                 <p className="text-[11px] text-text-dim">{t("login.verifyNotice")}</p>
-                <ErrorNotice error={error} />
                 <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
               </form>
               <p className="mt-4 text-center text-xs text-text-dim">
@@ -530,8 +566,6 @@ function UnifiedLogin() {
               <form onSubmit={handleSignIn("rider", "/rider")} className="space-y-4">
                 <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
-                <ErrorNotice error={error} />
-                {notice && <SuccessNotice message={notice} />}
                 <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="cyan" />
                 <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
                 <ForgotLink onClick={openRecovery} accent="cyan" />
@@ -551,8 +585,6 @@ function UnifiedLogin() {
             <form onSubmit={handleSignIn("admin", "/admin")} className="space-y-4">
               <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
               <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-              <ErrorNotice error={error} />
-              {notice && <SuccessNotice message={notice} />}
               <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
               <ForgotLink onClick={openRecovery} accent="amber" />
             </form>

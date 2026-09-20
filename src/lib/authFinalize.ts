@@ -15,11 +15,14 @@ export type AuthIntent = "customer" | "rider";
 export async function finalizeRole(
   userClient: SupabaseClient<Database>,
   intent: AuthIntent,
-): Promise<{ role: string; needsRiderOnboarding: boolean } | { error: string }> {
+): Promise<
+  | { role: string; needsRiderOnboarding: boolean }
+  | { error: string; actualRole?: string }
+> {
   const {
     data: { user },
   } = await userClient.auth.getUser();
-  if (!user) return { error: "Not signed in" };
+  if (!user) return { error: "notSignedIn" };
 
   const admin = createAdminClient();
   const { data: profile } = await admin
@@ -42,7 +45,10 @@ export async function finalizeRole(
   }
 
   if (role !== intent) {
-    return { error: `This account is registered as ${role}, not ${intent}.` };
+    // A code, not a sentence. The caller turns this into a translated message
+    // and can offer to switch to `actualRole` instead of leaving the user on a
+    // tab that will never let them in.
+    return { error: "wrongRole", actualRole: role };
   }
 
   let needsRiderOnboarding = false;

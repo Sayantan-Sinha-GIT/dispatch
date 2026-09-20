@@ -72,7 +72,9 @@ export async function GET(request: NextRequest) {
   const result = await finalizeRole(supabase, intent);
   if ("error" in result) {
     await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/login?role=${role}&error=${encodeURIComponent(result.error)}`);
+    const params = new URLSearchParams({ role, err: result.error });
+    if (result.actualRole) params.set("actual", result.actualRole);
+    return NextResponse.redirect(`${origin}/login?${params}`);
   }
 
   if (result.role === "rider") {
