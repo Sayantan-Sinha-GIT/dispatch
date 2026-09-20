@@ -84,11 +84,17 @@ function Nav() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber to-amber/60 font-display text-sm font-bold text-bg">
             D
           </span>
-          <span className="font-display text-base font-semibold">Dispatch</span>
+          <span className={`font-display text-base font-semibold transition-colors ${scrolled ? "" : "text-white"}`}>Dispatch</span>
         </div>
         <div className="hidden items-center gap-8 sm:flex">
           {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="text-sm text-text-dim transition-colors hover:text-text">
+            <a
+              key={l.href}
+              href={l.href}
+              className={`text-sm transition-colors ${
+                scrolled ? "text-text-dim hover:text-text" : "text-white/75 hover:text-white"
+              }`}
+            >
               {t(l.key)}
             </a>
           ))}
@@ -147,8 +153,11 @@ function Hero() {
         horizontal pass darkens the side the copy sits on, so the text keeps
         its contrast wherever the photograph happens to be bright.
       */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/70 via-transparent to-bg" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg via-bg/60 to-transparent sm:via-bg/35" />
+      {/* Fixed dark, not theme-derived: see the note above this component. */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#070a0f]/75 via-transparent to-[#070a0f]/85" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#070a0f] via-[#070a0f]/65 to-transparent sm:via-[#070a0f]/40" />
+      {/* The only theme-aware layer: the seam where the photo meets the page. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-bg" />
 
       {/* The dispatch route. Kept from the old hero - it is the one decorative
           element that says something true about the product. */}
@@ -171,13 +180,13 @@ function Hero() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3.5 py-1.5 text-xs text-text-dim backdrop-blur-md"
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3.5 py-1.5 text-xs text-white/75 backdrop-blur-md"
         >
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
           {t("hero.badge")}
         </motion.div>
 
-        <h1 className="max-w-3xl font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
+        <h1 className="max-w-3xl font-display text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl md:text-7xl">
           {[t("hero.title1"), t("hero.title2"), t("hero.title3")].map((line, i) => (
             // Lines rise from behind a clipping mask, so the headline
             // assembles itself instead of simply fading in.
@@ -198,7 +207,7 @@ function Hero() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.55 }}
-          className="mt-6 max-w-xl text-base text-text-dim sm:text-lg"
+          className="mt-6 max-w-xl text-base text-white/70 sm:text-lg"
         >
           {t("hero.subtitle")}
         </motion.p>
@@ -223,7 +232,7 @@ function Hero() {
           </Link>
           <a
             href="#how-it-works"
-            className="rounded-full border border-white/10 bg-black/20 px-7 py-3.5 text-sm font-semibold text-text-dim backdrop-blur transition-colors hover:text-text"
+            className="rounded-full border border-white/15 bg-black/25 px-7 py-3.5 text-sm font-semibold text-white/75 backdrop-blur transition-colors hover:text-white"
           >
             {t("hero.seeHow")}
           </a>
@@ -249,7 +258,8 @@ function Stat({ value, suffix, decimals, label }: { value: number; suffix: strin
   return (
     <div>
       <StatCounter value={value} suffix={suffix} decimals={decimals} className="font-display text-3xl font-bold text-amber" />
-      <p className="mt-1 text-xs text-text-dim">{label}</p>
+      {/* Hero-only, so it follows the hero rather than the page theme. */}
+      <p className="mt-1 text-xs text-white/60">{label}</p>
     </div>
   );
 }
