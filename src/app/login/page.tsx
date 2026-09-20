@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { AuthBackground } from "@/components/AuthBackground";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -279,136 +279,144 @@ function UnifiedLogin() {
           ))}
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${role}-${customerMode}`}
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            {recovery === "form" && (
-              <ForgotForm
-                email={email}
-                onEmail={setEmail}
-                onSubmit={handleForgot}
-                onBack={closeRecovery}
-                loading={loading}
-                accent={meta.accent}
-              />
-            )}
+        {/*
+          No AnimatePresence here. `mode="wait"` holds the incoming panel back
+          until the outgoing one reports its exit finished, and under
+          framer-motion 13 with React 19 that report never arrives: the card
+          froze on whichever panel rendered first. Switching role tabs or
+          opening "Create account" changed the heading but not the form.
 
-            {recovery === "sent" && (
-              <ForgotSent email={email} accent={meta.accent} onBack={closeRecovery} />
-            )}
+          The key alone re-mounts the panel and replays initial -> animate, so
+          the entrance still animates. Only the 0.2s exit is gone, which is a
+          fair price for a card that actually changes.
+        */}
+        <motion.div
+          key={`${role}-${customerMode}-${recovery}`}
+          initial={{ opacity: 0, x: 8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {recovery === "form" && (
+            <ForgotForm
+              email={email}
+              onEmail={setEmail}
+              onSubmit={handleForgot}
+              onBack={closeRecovery}
+              loading={loading}
+              accent={meta.accent}
+            />
+          )}
 
-            {recovery === "off" && role === "customer" && customerMode === "sent" && (
-              <VerifySent
-                email={email}
-                accent="amber"
-                onBack={() => {
-                  setCustomerMode("signin");
-                  resetFeedback();
-                }}
-                onResend={handleResend}
-                resendState={resendState}
-              />
-            )}
+          {recovery === "sent" && (
+            <ForgotSent email={email} accent={meta.accent} onBack={closeRecovery} />
+          )}
 
-            {recovery === "off" && role === "customer" && customerMode === "signin" && (
-              <>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={handleGoogle}
-                  disabled={googleLoading}
-                  className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  <GoogleIcon />
-                  {googleLoading ? t("login.redirecting") : t("login.google")}
-                </motion.button>
-                <Divider label={t("login.orEmail")} />
-                <form onSubmit={handleSignIn("customer", "/shop")} className="space-y-4">
-                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                  <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-                  <ErrorNotice error={error} />
-                  {notice && <SuccessNotice message={notice} />}
-                  <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="amber" />
-                  <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
-                  <ForgotLink onClick={openRecovery} accent="amber" />
-                </form>
-                <p className="mt-4 text-center text-xs text-text-dim">
-                  {t("login.newHere")}{" "}
-                  <button type="button" onClick={() => { setCustomerMode("signup"); resetFeedback(); }} className="text-amber hover:underline">
-                    {t("login.createAccount")}
-                  </button>
-                </p>
-              </>
-            )}
+          {recovery === "off" && role === "customer" && customerMode === "sent" && (
+            <VerifySent
+              email={email}
+              accent="amber"
+              onBack={() => {
+                setCustomerMode("signin");
+                resetFeedback();
+              }}
+              onResend={handleResend}
+              resendState={resendState}
+            />
+          )}
 
-            {recovery === "off" && role === "customer" && customerMode === "signup" && (
-              <>
-                <form onSubmit={handleCustomerSignUp} className="space-y-4">
-                  <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
-                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                  <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-                  <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
-                  <p className="text-[11px] text-text-dim">{t("login.verifyNotice")}</p>
-                  <ErrorNotice error={error} />
-                  <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
-                </form>
-                <p className="mt-4 text-center text-xs text-text-dim">
-                  {t("login.haveAccount")}{" "}
-                  <button type="button" onClick={() => { setCustomerMode("signin"); resetFeedback(); }} className="text-amber hover:underline">
-                    {t("login.signIn")}
-                  </button>
-                </p>
-              </>
-            )}
-
-            {recovery === "off" && role === "rider" && (
-              <>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={handleGoogle}
-                  disabled={googleLoading}
-                  className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  <GoogleIcon />
-                  {googleLoading ? t("login.redirecting") : t("login.google")}
-                </motion.button>
-                <Divider label={t("login.orEmail")} />
-                <form onSubmit={handleSignIn("rider", "/rider")} className="space-y-4">
-                  <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
-                  <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
-                  <ErrorNotice error={error} />
-                  {notice && <SuccessNotice message={notice} />}
-                  <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="cyan" />
-                  <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
-                  <ForgotLink onClick={openRecovery} accent="cyan" />
-                </form>
-                <p className="mt-4 text-center text-xs text-text-dim">
-                  {t("login.newRider")}{" "}
-                  <Link href="/rider/signup" className="text-cyan hover:underline">
-                    {t("login.signUp")}
-                  </Link>
-                </p>
-              </>
-            )}
-
-            {recovery === "off" && role === "admin" && (
-              <form onSubmit={handleSignIn("admin", "/admin")} className="space-y-4">
-                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
+          {recovery === "off" && role === "customer" && customerMode === "signin" && (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                onClick={handleGoogle}
+                disabled={googleLoading}
+                className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                <GoogleIcon />
+                {googleLoading ? t("login.redirecting") : t("login.google")}
+              </motion.button>
+              <Divider label={t("login.orEmail")} />
+              <form onSubmit={handleSignIn("customer", "/shop")} className="space-y-4">
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
                 <ErrorNotice error={error} />
                 {notice && <SuccessNotice message={notice} />}
+                <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="amber" />
                 <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
                 <ForgotLink onClick={openRecovery} accent="amber" />
               </form>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              <p className="mt-4 text-center text-xs text-text-dim">
+                {t("login.newHere")}{" "}
+                <button type="button" onClick={() => { setCustomerMode("signup"); resetFeedback(); }} className="text-amber hover:underline">
+                  {t("login.createAccount")}
+                </button>
+              </p>
+            </>
+          )}
+
+          {recovery === "off" && role === "customer" && customerMode === "signup" && (
+            <>
+              <form onSubmit={handleCustomerSignUp} className="space-y-4">
+                <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
+                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
+                <p className="text-[11px] text-text-dim">{t("login.verifyNotice")}</p>
+                <ErrorNotice error={error} />
+                <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
+              </form>
+              <p className="mt-4 text-center text-xs text-text-dim">
+                {t("login.haveAccount")}{" "}
+                <button type="button" onClick={() => { setCustomerMode("signin"); resetFeedback(); }} className="text-amber hover:underline">
+                  {t("login.signIn")}
+                </button>
+              </p>
+            </>
+          )}
+
+          {recovery === "off" && role === "rider" && (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                onClick={handleGoogle}
+                disabled={googleLoading}
+                className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                <GoogleIcon />
+                {googleLoading ? t("login.redirecting") : t("login.google")}
+              </motion.button>
+              <Divider label={t("login.orEmail")} />
+              <form onSubmit={handleSignIn("rider", "/rider")} className="space-y-4">
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
+                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
+                <ErrorNotice error={error} />
+                {notice && <SuccessNotice message={notice} />}
+                <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="cyan" />
+                <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                <ForgotLink onClick={openRecovery} accent="cyan" />
+              </form>
+              <p className="mt-4 text-center text-xs text-text-dim">
+                {t("login.newRider")}{" "}
+                <Link href="/rider/signup" className="text-cyan hover:underline">
+                  {t("login.signUp")}
+                </Link>
+              </p>
+            </>
+          )}
+
+          {recovery === "off" && role === "admin" && (
+            <form onSubmit={handleSignIn("admin", "/admin")} className="space-y-4">
+              <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
+              <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+              <ErrorNotice error={error} />
+              {notice && <SuccessNotice message={notice} />}
+              <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+              <ForgotLink onClick={openRecovery} accent="amber" />
+            </form>
+          )}
+        </motion.div>
       </motion.div>
     </div>
   );
