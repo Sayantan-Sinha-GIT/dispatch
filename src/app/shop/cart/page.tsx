@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PageBackground } from "@/components/PageBackground";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -126,7 +127,8 @@ export default function ShopCartPage() {
   const total = cart.length > 0 ? subtotal + DELIVERY_FEE : 0;
 
   return (
-    <div className="min-h-screen bg-bg pb-32">
+    <div className="relative min-h-screen pb-32">
+      <PageBackground accent="amber" image="/images/categories/produce.webp" imageOpacity={0.1} />
       <header className="flex items-center gap-3.5 border-b border-border px-5 py-5">
         <Link href="/shop" className="text-text">
           ←

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PageBackground } from "@/components/PageBackground";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -67,7 +68,8 @@ export default function ShopCatalogPage() {
   const loading = products.length === 0;
 
   return (
-    <div className="min-h-screen bg-bg pb-28">
+    <div className="relative min-h-screen pb-28">
+      <PageBackground accent="amber" grid={false} />
       <header className="sticky top-0 z-30 border-b border-border bg-gradient-to-r from-surface via-surface to-amber/10 px-6 py-5 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -107,7 +109,7 @@ export default function ShopCatalogPage() {
           />
         </div>
 
-        <div className="-mx-4 mt-3.5 flex gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-4 mt-3.5 flex gap-2.5 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {categories.map((c, i) => {
             const img = CATEGORY_IMAGE[c];
             const active = category === c;

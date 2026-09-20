@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
+import { PageBackground } from "@/components/PageBackground";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -146,6 +147,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
 
   return (
     <div className="relative min-h-screen pb-10">
+      <PageBackground accent="cyan" image="/images/landing/how-it-works.webp" imageOpacity={0.13} />
       <AmbientBackground accent={accent} />
       <AnimatePresence>{justDelivered && <Confetti />}</AnimatePresence>
 
