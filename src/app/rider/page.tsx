@@ -132,16 +132,27 @@ export default function RiderDashboard() {
       setTogglingStatus(false);
       return;
     }
-    if (nextStatus === "inactive") {
-      const res = await fetch("/api/rider/go-offline", { method: "POST" });
-      if (!res.ok) setErrorMsg(t("rider.err.offlinePartial"));
-    } else {
-      // Coming online should surface waiting work immediately rather than
-      // leaving the rider idle until the next 20s poll.
-      await fetch("/api/offers/sweep", { method: "POST" }).catch(() => {});
-    }
-    await loadData();
+
+    /*
+     * The switch is done the moment the status lands. What follows - handing
+     * off un-accepted offers, or sweeping for waiting work - is dispatch
+     * bookkeeping that can take seconds, and awaiting it left the toggle
+     * visibly stuck and feeling broken.
+     *
+     * So the UI updates now and the bookkeeping runs behind it, reconciling
+     * when it finishes.
+     */
+    setRider((r) => (r ? { ...r, status: nextStatus } : r));
     setTogglingStatus(false);
+
+    const followUp =
+      nextStatus === "inactive"
+        ? fetch("/api/rider/go-offline", { method: "POST" }).then((res) => {
+            if (!res.ok) setErrorMsg(t("rider.err.offlinePartial"));
+          })
+        : fetch("/api/offers/sweep", { method: "POST" });
+
+    followUp.catch(() => {}).finally(() => loadData());
   }
 
   async function acceptOrder(orderId: string) {
@@ -184,9 +195,26 @@ export default function RiderDashboard() {
     setDeliverSubmitting(false);
 
     if (error || !result?.ok) {
-      // A wrong code is an everyday mistake, not a system failure, so it stays
-      // inside the sheet and the rider can simply retype it.
-      setDeliverError(result?.error === "bad_code" ? t("rider.deliver.badCode") : t("rider.err.markDelivered"));
+      /*
+       * Every non-code failure used to surface as one opaque sentence. A rider
+       * holding the right code was told to "try again" when the real problem
+       * was that the order had never been accepted - which is a different
+       * action entirely, and invisible from that message.
+       */
+      const reason = result?.error;
+      setDeliverError(
+        reason === "bad_code"
+          ? t("rider.deliver.badCode")
+          : reason === "not_accepted"
+            ? t("rider.deliver.notAccepted")
+            : reason === "not_yours"
+              ? t("rider.deliver.notYours")
+              : reason === "not_a_rider"
+                ? t("rider.deliver.notARider")
+                : t("rider.err.markDelivered"),
+      );
+      // The sheet is showing stale state if the order moved on without us.
+      if (reason === "not_accepted" || reason === "not_yours") loadData();
       return;
     }
     setDeliveringOrder(null);
