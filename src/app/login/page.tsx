@@ -166,7 +166,18 @@ function UnifiedLogin() {
     // password, so make them use the new one.
     await supabase.auth.signOut();
     setLoading(false);
-    router.push(`/login?role=${role}&notice=passwordUpdated`);
+
+    // Done in state rather than by navigating. We are already on /login, so a
+    // push to the same route does not remount this component: the panel would
+    // stay on the code form, and `notice` - which is read from the query string
+    // only at mount - would never pick up the success message.
+    setRecovery("off");
+    setResetCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPassword("");
+    setError(null);
+    setNotice(t("login.resetDone"));
     router.refresh();
   }
 
