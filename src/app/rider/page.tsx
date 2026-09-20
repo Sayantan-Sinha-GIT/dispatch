@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
@@ -412,11 +413,15 @@ export default function RiderDashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center rounded-2xl border border-border bg-surface p-10 text-center"
+            className="surface-raised-soft grain flex flex-col items-center rounded-3xl p-10 text-center ring-1 ring-border/60"
           >
-            <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2.4, repeat: Infinity }} className="mb-3 text-3xl">
-              💤
-            </motion.span>
+            <motion.div
+              animate={{ opacity: [0.55, 1, 0.55], y: [0, -4, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+              className="relative mb-4"
+            >
+              <Image src="/images/empty/rider-idle.webp" alt="" width={130} height={130} className="opacity-80" />
+            </motion.div>
             <p className="text-sm text-text-dim">{t("rider.offlineHint")}</p>
           </motion.div>
         )}
