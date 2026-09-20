@@ -498,7 +498,10 @@ function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-amber font-display text-xs font-bold text-bg">D</span>
-          <span className="text-sm text-text-dim">© {new Date().getFullYear()} {t("footer.rights")}</span>
+          <div className="flex flex-col">
+            <span className="text-sm text-text-dim">© {new Date().getFullYear()} {t("footer.rights")}</span>
+            <span className="text-xs text-text-dim">{t("footer.builtBy")}</span>
+          </div>
         </div>
         <div className="flex gap-6 text-xs text-text-dim">
           <a href="#how-it-works" className="hover:text-text">{t("nav.howItWorks")}</a>
