@@ -8,6 +8,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { createClient } from "@/lib/supabase/client";
 import { AuthBackground } from "@/components/AuthBackground";
 import { EyeIcon, EyeOffIcon } from "@/components/Icons";
+import { VerifyCodeForm } from "@/components/auth/VerifyCodeForm";
 
 export default function RiderSignupPage() {
   const router = useRouter();
@@ -26,6 +27,8 @@ export default function RiderSignupPage() {
   const [sent, setSent] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const [showPassword, setShowPassword] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   function useMyLocation() {
     setLocating(true);
@@ -63,7 +66,7 @@ export default function RiderSignupPage() {
     setLoading(true);
     const supabase = createClient();
     // The depot and capacity ride along in user_metadata: the riders row is
-    // created once the emailed link is clicked and the account becomes real.
+    // created once the emailed code is accepted and the account becomes real.
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
@@ -75,7 +78,6 @@ export default function RiderSignupPage() {
           depot_lat: parseFloat(form.depotLat),
           depot_lng: parseFloat(form.depotLng),
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback?intent=rider`,
       },
     });
     setLoading(false);
@@ -105,12 +107,40 @@ export default function RiderSignupPage() {
   async function handleResend() {
     setResendState("sending");
     const supabase = createClient();
-    await supabase.auth.resend({
-      type: "signup",
-      email: form.email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?intent=rider` },
-    });
+    await supabase.auth.resend({ type: "signup", email: form.email });
     setResendState("sent");
+  }
+
+  /**
+   * Accepting the code creates the session, and /api/auth/finalize then builds
+   * the riders row from the depot and capacity carried in user_metadata -
+   * exactly what the emailed link used to trigger.
+   */
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setVerifying(true);
+    const supabase = createClient();
+
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      email: form.email,
+      token: verifyCode.trim(),
+      type: "signup",
+    });
+    if (otpError) {
+      setError(t("login.err.badVerifyCode"));
+      setVerifying(false);
+      return;
+    }
+
+    await fetch("/api/auth/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "rider" }),
+    });
+    setVerifying(false);
+    router.push("/rider");
+    router.refresh();
   }
 
   return (
@@ -134,27 +164,22 @@ export default function RiderSignupPage() {
         </div>
 
         {sent ? (
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cyan/15 text-xl">✉️</div>
-            <h2 className="mb-2 font-display text-base font-semibold">{t("login.checkInbox")}</h2>
-            <p className="mb-1 text-xs leading-relaxed text-text-dim">{t("login.verifySent", { email: form.email })}</p>
-            <p className="mb-5 text-[11px] text-text-dim">{t("login.verifySpamHint")}</p>
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resendState !== "idle"}
-              className="w-full rounded-lg border border-cyan/40 py-2.5 text-sm font-semibold text-cyan disabled:opacity-60"
-            >
-              {resendState === "sending"
-                ? t("login.resending")
-                : resendState === "sent"
-                  ? t("login.resent")
-                  : t("login.resend")}
-            </button>
-            <Link href="/login?role=rider" className="mt-3 block text-center text-xs text-text-dim hover:text-text">
-              {t("login.backToSignIn")}
-            </Link>
-          </div>
+          <VerifyCodeForm
+            email={form.email}
+            code={verifyCode}
+            onCode={setVerifyCode}
+            onSubmit={handleVerifyCode}
+            onResend={handleResend}
+            onBack={() => {
+              setSent(false);
+              setVerifyCode("");
+              setError(null);
+            }}
+            loading={verifying}
+            resendState={resendState}
+            error={error}
+            accent="cyan"
+          />
         ) : (
           <>
             <form onSubmit={handleSubmit} className="space-y-3.5">

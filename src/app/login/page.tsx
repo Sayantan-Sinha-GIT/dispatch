@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
 import { EyeIcon, EyeOffIcon } from "@/components/Icons";
+import { VerifyCodeForm } from "@/components/auth/VerifyCodeForm";
 
 type Role = "customer" | "rider" | "admin";
 
@@ -51,7 +52,14 @@ function UnifiedLogin() {
    * Two modes only. Accounts are created with a password and activated by
    * clicking the link Supabase emails; there is no code to type anywhere.
    */
-  const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "sent">("signin");
+  const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "verify">("signin");
+  /**
+   * The email form stays behind a button so the first screen offers exactly
+   * two choices: Google, or email. Admin has no Google option, so there is
+   * nothing to choose between and its form shows immediately.
+   */
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
   /** Password recovery, available to every role - see note above. */
   const [recovery, setRecovery] = useState<"off" | "form" | "code">("off");
   const [resetCode, setResetCode] = useState("");
@@ -92,6 +100,8 @@ function UnifiedLogin() {
     setPassword("");
     setCustomerMode("signin");
     setRecovery("off");
+    setEmailOpen(false);
+    setVerifyCode("");
   }
 
   function openRecovery() {
@@ -187,8 +197,12 @@ function UnifiedLogin() {
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError || !data.user) {
       if (isUnconfirmedEmail(signInError?.message)) {
+        // The code from their sign-up email is still valid, so send them
+        // somewhere they can actually type it rather than to a message with
+        // no next step.
         setError(t("login.err.emailNotConfirmed"));
         setNeedsVerification(true);
+        if (expected !== "admin") setCustomerMode("verify");
       } else {
         setError(signInError?.message ?? t("login.err.signInFailed"));
       }
@@ -269,7 +283,40 @@ function UnifiedLogin() {
       router.refresh();
       return;
     }
-    setCustomerMode("sent");
+    setCustomerMode("verify");
+  }
+
+  /**
+   * Turns the emailed code into a session, then stamps the role. finalizeRole
+   * runs server-side through /api/auth/finalize, the same route the old link
+   * callback used, so a code-verified account ends up identical to a
+   * link-verified one.
+   */
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    resetFeedback();
+    setLoading(true);
+    const supabase = createClient();
+
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      email,
+      token: verifyCode.trim(),
+      type: "signup",
+    });
+    if (otpError) {
+      setError(t("login.err.badVerifyCode"));
+      setLoading(false);
+      return;
+    }
+
+    await fetch("/api/auth/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: role === "rider" ? "rider" : "customer" }),
+    });
+    setLoading(false);
+    router.push(role === "rider" ? "/rider" : "/shop");
+    router.refresh();
   }
 
   async function handleResend() {
@@ -387,16 +434,22 @@ function UnifiedLogin() {
             />
           )}
 
-          {recovery === "off" && role === "customer" && customerMode === "sent" && (
-            <VerifySent
+          {recovery === "off" && role !== "admin" && customerMode === "verify" && (
+            <VerifyCodeForm
               email={email}
-              accent="amber"
+              code={verifyCode}
+              onCode={setVerifyCode}
+              onSubmit={handleVerifyCode}
+              onResend={handleResend}
               onBack={() => {
                 setCustomerMode("signin");
+                setVerifyCode("");
                 resetFeedback();
               }}
-              onResend={handleResend}
+              loading={loading}
               resendState={resendState}
+              error={error}
+              accent={meta.accent}
             />
           )}
 
@@ -412,6 +465,10 @@ function UnifiedLogin() {
                 <GoogleIcon />
                 {googleLoading ? t("login.redirecting") : t("login.google")}
               </motion.button>
+              {!emailOpen ? (
+                <EmailGateButton onClick={() => { setEmailOpen(true); resetFeedback(); }} accent="amber" />
+              ) : (
+                <>
               <Divider label={t("login.orEmail")} />
               <form onSubmit={handleSignIn("customer", "/shop")} className="space-y-4">
                 <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
@@ -428,6 +485,8 @@ function UnifiedLogin() {
                   {t("login.createAccount")}
                 </button>
               </p>
+                </>
+              )}
             </>
           )}
 
@@ -451,7 +510,7 @@ function UnifiedLogin() {
             </>
           )}
 
-          {recovery === "off" && role === "rider" && (
+          {recovery === "off" && role === "rider" && customerMode !== "verify" && (
             <>
               <motion.button
                 whileTap={{ scale: 0.98 }}
@@ -463,6 +522,10 @@ function UnifiedLogin() {
                 <GoogleIcon />
                 {googleLoading ? t("login.redirecting") : t("login.google")}
               </motion.button>
+              {!emailOpen ? (
+                <EmailGateButton onClick={() => { setEmailOpen(true); resetFeedback(); }} accent="cyan" />
+              ) : (
+                <>
               <Divider label={t("login.orEmail")} />
               <form onSubmit={handleSignIn("rider", "/rider")} className="space-y-4">
                 <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
@@ -479,6 +542,8 @@ function UnifiedLogin() {
                   {t("login.signUp")}
                 </Link>
               </p>
+                </>
+              )}
             </>
           )}
 
@@ -637,46 +702,31 @@ function ForgotCodeForm({
   );
 }
 
-function VerifySent({
-  email,
-  accent,
-  onBack,
-  onResend,
-  resendState,
-}: {
-  email: string;
-  accent: "amber" | "cyan";
-  onBack: () => void;
-  onResend: () => void;
-  resendState: "idle" | "sending" | "sent";
-}) {
+function EmailGateButton({ onClick, accent }: { onClick: () => void; accent: "amber" | "cyan" }) {
   const { t } = useLanguage();
   return (
-    <div className="text-center">
-      <div
-        className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full text-xl ${
-          accent === "amber" ? "bg-amber/15" : "bg-cyan/15"
-        }`}
-      >
-        ✉️
-      </div>
-      <h2 className="mb-2 font-display text-base font-semibold">{t("login.checkInbox")}</h2>
-      <p className="mb-1 text-xs leading-relaxed text-text-dim">{t("login.verifySent", { email })}</p>
-      <p className="mb-5 text-[11px] text-text-dim">{t("login.verifySpamHint")}</p>
-      <button
-        type="button"
-        onClick={onResend}
-        disabled={resendState !== "idle"}
-        className={`w-full rounded-lg border py-2.5 text-sm font-semibold disabled:opacity-60 ${
-          accent === "amber" ? "border-amber/40 text-amber" : "border-cyan/40 text-cyan"
-        }`}
-      >
-        {resendState === "sending" ? t("login.resending") : resendState === "sent" ? t("login.resent") : t("login.resend")}
-      </button>
-      <button type="button" onClick={onBack} className="mt-3 w-full text-center text-xs text-text-dim hover:text-text">
-        {t("login.backToSignIn")}
-      </button>
-    </div>
+    <motion.button
+      whileTap={{ scale: 0.98 }}
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center justify-center gap-2.5 rounded-lg border py-2.5 text-sm font-semibold transition-colors ${
+        accent === "amber"
+          ? "border-amber/40 text-amber hover:bg-amber/10"
+          : "border-cyan/40 text-cyan hover:bg-cyan/10"
+      }`}
+    >
+      <MailIcon />
+      {t("login.continueEmail")}
+    </motion.button>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m2 7 10 6 10-6" />
+    </svg>
   );
 }
 
