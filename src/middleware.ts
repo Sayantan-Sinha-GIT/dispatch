@@ -35,7 +35,14 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthRoute =
-    path.startsWith("/login") || path === "/rider/signup" || path.startsWith("/auth/callback");
+    path.startsWith("/login") ||
+    path === "/rider/signup" ||
+    path.startsWith("/auth/callback") ||
+    // Reachable signed out on purpose: an expired or already-spent recovery
+    // link leaves no session, and the page's own "ask for a new link" message
+    // is the useful answer. Gating it here would bounce those people to a
+    // sign-in form that cannot explain what went wrong.
+    path === "/reset-password";
   const isPublic = isAuthRoute || path === "/";
 
   if (!user && !isPublic) {
