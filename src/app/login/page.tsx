@@ -52,10 +52,16 @@ function UnifiedLogin() {
    * clicking the link Supabase emails; there is no code to type anywhere.
    */
   const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "sent">("signin");
+  /** Password recovery, available to every role - see note above. */
+  const [recovery, setRecovery] = useState<"off" | "form" | "sent">("off");
   const errCode = searchParams.get("err");
   const [error, setError] = useState<string | null>(errCode ? t(`login.err.${errCode}`) : searchParams.get("error"));
   const [notice, setNotice] = useState<string | null>(
-    searchParams.get("notice") === "verified" ? t("login.verifiedNotice") : null,
+    searchParams.get("notice") === "verified"
+      ? t("login.verifiedNotice")
+      : searchParams.get("notice") === "passwordUpdated"
+        ? t("login.resetDone")
+        : null,
   );
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
@@ -82,6 +88,35 @@ function UnifiedLogin() {
     resetFeedback();
     setPassword("");
     setCustomerMode("signin");
+    setRecovery("off");
+  }
+
+  function openRecovery() {
+    resetFeedback();
+    setPassword("");
+    setRecovery("form");
+  }
+
+  function closeRecovery() {
+    resetFeedback();
+    setRecovery("off");
+  }
+
+  /**
+   * Always reports success, even for an address with no account. Telling a
+   * stranger "no account here" turns this box into a free tool for checking
+   * who is registered.
+   */
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    resetFeedback();
+    setLoading(true);
+    const supabase = createClient();
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?intent=${role}&next=/reset-password`,
+    });
+    setLoading(false);
+    setRecovery("sent");
   }
 
   /** Shared by all three roles: sign in, then refuse if the profile is a different role. */
@@ -252,7 +287,22 @@ function UnifiedLogin() {
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {role === "customer" && customerMode === "sent" && (
+            {recovery === "form" && (
+              <ForgotForm
+                email={email}
+                onEmail={setEmail}
+                onSubmit={handleForgot}
+                onBack={closeRecovery}
+                loading={loading}
+                accent={meta.accent}
+              />
+            )}
+
+            {recovery === "sent" && (
+              <ForgotSent email={email} accent={meta.accent} onBack={closeRecovery} />
+            )}
+
+            {recovery === "off" && role === "customer" && customerMode === "sent" && (
               <VerifySent
                 email={email}
                 accent="amber"
@@ -265,7 +315,7 @@ function UnifiedLogin() {
               />
             )}
 
-            {role === "customer" && customerMode === "signin" && (
+            {recovery === "off" && role === "customer" && customerMode === "signin" && (
               <>
                 <motion.button
                   whileTap={{ scale: 0.98 }}
@@ -285,6 +335,7 @@ function UnifiedLogin() {
                   {notice && <SuccessNotice message={notice} />}
                   <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="amber" />
                   <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                  <ForgotLink onClick={openRecovery} accent="amber" />
                 </form>
                 <p className="mt-4 text-center text-xs text-text-dim">
                   {t("login.newHere")}{" "}
@@ -295,7 +346,7 @@ function UnifiedLogin() {
               </>
             )}
 
-            {role === "customer" && customerMode === "signup" && (
+            {recovery === "off" && role === "customer" && customerMode === "signup" && (
               <>
                 <form onSubmit={handleCustomerSignUp} className="space-y-4">
                   <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
@@ -315,7 +366,7 @@ function UnifiedLogin() {
               </>
             )}
 
-            {role === "rider" && (
+            {recovery === "off" && role === "rider" && (
               <>
                 <motion.button
                   whileTap={{ scale: 0.98 }}
@@ -335,6 +386,7 @@ function UnifiedLogin() {
                   {notice && <SuccessNotice message={notice} />}
                   <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="cyan" />
                   <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                  <ForgotLink onClick={openRecovery} accent="cyan" />
                 </form>
                 <p className="mt-4 text-center text-xs text-text-dim">
                   {t("login.newRider")}{" "}
@@ -345,18 +397,96 @@ function UnifiedLogin() {
               </>
             )}
 
-            {role === "admin" && (
+            {recovery === "off" && role === "admin" && (
               <form onSubmit={handleSignIn("admin", "/admin")} className="space-y-4">
                 <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
                 <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
                 <ErrorNotice error={error} />
                 {notice && <SuccessNotice message={notice} />}
                 <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                <ForgotLink onClick={openRecovery} accent="amber" />
               </form>
             )}
           </motion.div>
         </AnimatePresence>
       </motion.div>
+    </div>
+  );
+}
+
+function ForgotLink({ onClick, accent }: { onClick: () => void; accent: "amber" | "cyan" }) {
+  const { t } = useLanguage();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-center text-xs hover:underline ${accent === "amber" ? "text-amber" : "text-cyan"}`}
+    >
+      {t("login.forgot")}
+    </button>
+  );
+}
+
+function ForgotForm({
+  email,
+  onEmail,
+  onSubmit,
+  onBack,
+  loading,
+  accent,
+}: {
+  email: string;
+  onEmail: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onBack: () => void;
+  loading: boolean;
+  accent: "amber" | "cyan";
+}) {
+  const { t } = useLanguage();
+  return (
+    <>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <h2 className="font-display text-base font-semibold">{t("login.resetTitle")}</h2>
+        <p className="text-xs leading-relaxed text-text-dim">{t("login.resetIntro")}</p>
+        <FormField
+          label={t("login.email")}
+          type="email"
+          value={email}
+          onChange={onEmail}
+          placeholder={t("login.ph.email")}
+          accent={accent}
+        />
+        <SubmitButton
+          loading={loading}
+          accent={accent}
+          label={t("login.sendReset")}
+          loadingLabel={t("login.resending")}
+        />
+      </form>
+      <button type="button" onClick={onBack} className="mt-3 w-full text-center text-xs text-text-dim hover:text-text">
+        {t("login.backToSignIn")}
+      </button>
+    </>
+  );
+}
+
+function ForgotSent({ email, accent, onBack }: { email: string; accent: "amber" | "cyan"; onBack: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <div className="text-center">
+      <div
+        className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full text-xl ${
+          accent === "amber" ? "bg-amber/15" : "bg-cyan/15"
+        }`}
+      >
+        ✉️
+      </div>
+      <h2 className="mb-2 font-display text-base font-semibold">{t("login.checkInbox")}</h2>
+      <p className="mb-1 text-xs leading-relaxed text-text-dim">{t("login.resetSent", { email })}</p>
+      <p className="mb-5 text-[11px] text-text-dim">{t("login.verifySpamHint")}</p>
+      <button type="button" onClick={onBack} className="w-full text-center text-xs text-text-dim hover:text-text">
+        {t("login.backToSignIn")}
+      </button>
     </div>
   );
 }

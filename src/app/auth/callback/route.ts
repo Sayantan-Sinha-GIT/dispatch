@@ -27,12 +27,20 @@ export async function GET(request: NextRequest) {
   const providerError = searchParams.get("error_description") ?? searchParams.get("error");
   const intent = (searchParams.get("intent") ?? "customer") as AuthIntent;
   const role = intent === "rider" ? "rider" : "customer";
+  // A password-recovery link carries the user to a form instead of into the
+  // app. Treat it as recovery if Supabase says so, or if the link asked for it.
+  const isRecovery = otpType === "recovery" || searchParams.get("next") === "/reset-password";
+  // Never redirect anywhere but back into this app. A bare "/" prefix is not
+  // enough — "//evil.com" is protocol-relative and leaves the site.
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && /^\/(?!\/)/.test(rawNext) ? rawNext : "/reset-password";
+  const deadLink = `${origin}/login?role=${role}&err=${isRecovery ? "resetLinkDead" : "linkExpired"}`;
 
   if (providerError) {
-    return NextResponse.redirect(`${origin}/login?role=${role}&err=linkExpired`);
+    return NextResponse.redirect(deadLink);
   }
   if (!code && !tokenHash) {
-    return NextResponse.redirect(`${origin}/login?role=${role}&err=linkInvalid`);
+    return NextResponse.redirect(isRecovery ? deadLink : `${origin}/login?role=${role}&err=linkInvalid`);
   }
 
   const supabase = await createClient();
@@ -42,7 +50,14 @@ export async function GET(request: NextRequest) {
     : await supabase.auth.exchangeCodeForSession(code!);
 
   if (error) {
-    return NextResponse.redirect(`${origin}/login?role=${role}&err=linkExpired`);
+    return NextResponse.redirect(deadLink);
+  }
+
+  // Recovery stops here on purpose. The session it opens exists only so the
+  // user can set a new password; stamping roles or sending them into the app
+  // would skip the very step the link was for.
+  if (isRecovery) {
+    return NextResponse.redirect(`${origin}${nextPath}?role=${role}`);
   }
 
   const result = await finalizeRole(supabase, intent);

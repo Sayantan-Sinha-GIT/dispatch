@@ -1,0 +1,174 @@
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
+import { AuthBackground } from "@/components/AuthBackground";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/components/LanguageProvider";
+import { EyeIcon, EyeOffIcon } from "@/components/Icons";
+
+/**
+ * Landing spot for a password-recovery link.
+ *
+ * `/auth/callback` has already exchanged the token by the time anyone gets
+ * here, so a live session is the proof that the link was genuine. No session
+ * means the link was expired, already spent, or typed in by hand — in every
+ * case the only useful answer is "ask for a new one", so we say that instead
+ * of showing a form that cannot work.
+ */
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPassword />
+    </Suspense>
+  );
+}
+
+function ResetPassword() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { t } = useLanguage();
+  const role = searchParams.get("role") ?? "customer";
+
+  const [checking, setChecking] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      setHasSession(!!data.session);
+      setChecking(false);
+    });
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 8) {
+      setError(t("login.err.weakPassword"));
+      return;
+    }
+    if (password !== confirm) {
+      setError(t("login.err.passwordMismatch"));
+      return;
+    }
+    setSaving(true);
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
+      setError(updateError.message || t("login.err.resetFailed"));
+      setSaving(false);
+      return;
+    }
+    // Sign out deliberately. The recovery session was granted by an emailed
+    // link, not by someone proving they know the password — so make them use
+    // the new one. It also invalidates the link for anyone else who saw it.
+    await supabase.auth.signOut();
+    router.push(`/login?role=${role}&notice=passwordUpdated`);
+    router.refresh();
+  }
+
+  return (
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+      <AuthBackground accent="amber" />
+
+      <div className="absolute right-4 top-4 z-10 flex gap-2">
+        <LanguageToggle />
+        <ThemeToggle />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative w-full max-w-sm rounded-2xl border border-border bg-surface/90 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl"
+      >
+        <Link href="/" className="mb-8 flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber font-display font-bold text-bg">D</span>
+          <div>
+            <h1 className="font-display text-lg font-semibold leading-none">Dispatch</h1>
+            <p className="text-xs text-text-dim">{t("login.resetTagline")}</p>
+          </div>
+        </Link>
+
+        {checking ? (
+          <p className="py-6 text-center text-xs text-text-dim">{t("login.redirecting")}</p>
+        ) : !hasSession ? (
+          <div className="text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber/15 text-xl">⏳</div>
+            <p className="mb-5 text-xs leading-relaxed text-text-dim">{t("login.err.resetLinkDead")}</p>
+            <Link
+              href={`/login?role=${role}`}
+              className="block w-full rounded-lg border border-amber/40 py-2.5 text-sm font-semibold text-amber"
+            >
+              {t("login.backToSignIn")}
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <h2 className="font-display text-base font-semibold">{t("login.resetTitle")}</h2>
+            <PasswordField label={t("login.newPassword")} value={password} onChange={setPassword} />
+            <PasswordField label={t("login.confirmPassword")} value={confirm} onChange={setConfirm} />
+            <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
+            {error && (
+              <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</p>
+            )}
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={saving}
+              className="w-full rounded-lg bg-amber py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {saving ? t("login.updating") : t("login.updatePassword")}
+            </motion.button>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const { t } = useLanguage();
+  const [reveal, setReveal] = useState(false);
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-text-dim">{label}</label>
+      <div className="relative">
+        <input
+          type={reveal ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+          placeholder="••••••••"
+          className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2.5 pr-10 text-sm outline-none transition-colors focus:border-amber"
+        />
+        <button
+          type="button"
+          onClick={() => setReveal((r) => !r)}
+          aria-label={reveal ? t("login.hidePassword") : t("login.showPassword")}
+          title={reveal ? t("login.hidePassword") : t("login.showPassword")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-text-dim transition-colors hover:text-text"
+        >
+          {reveal ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
+      </div>
+    </div>
+  );
+}
