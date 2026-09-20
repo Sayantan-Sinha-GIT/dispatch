@@ -53,7 +53,10 @@ function UnifiedLogin() {
    */
   const [customerMode, setCustomerMode] = useState<"signin" | "signup" | "sent">("signin");
   /** Password recovery, available to every role - see note above. */
-  const [recovery, setRecovery] = useState<"off" | "form" | "sent">("off");
+  const [recovery, setRecovery] = useState<"off" | "form" | "code">("off");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const errCode = searchParams.get("err");
   const [error, setError] = useState<string | null>(errCode ? t(`login.err.${errCode}`) : searchParams.get("error"));
   const [notice, setNotice] = useState<string | null>(
@@ -100,6 +103,9 @@ function UnifiedLogin() {
   function closeRecovery() {
     resetFeedback();
     setRecovery("off");
+    setResetCode("");
+    setNewPassword("");
+    setConfirmPassword("");
   }
 
   /**
@@ -112,11 +118,56 @@ function UnifiedLogin() {
     resetFeedback();
     setLoading(true);
     const supabase = createClient();
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?intent=${role}&next=/reset-password`,
-    });
+    // Still the same Supabase call - what arrives is decided by the "Reset
+    // Password" email template, which carries {{ .Token }} and no link.
+    await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
-    setRecovery("sent");
+    setRecovery("code");
+  }
+
+  /**
+   * Verifying the code opens a short-lived session, which is what authorises
+   * the password change. Both halves happen here so nobody is left sitting in
+   * a half-authenticated state holding an already-spent code.
+   */
+  async function handleResetWithCode(e: React.FormEvent) {
+    e.preventDefault();
+    resetFeedback();
+    if (newPassword.length < 8) {
+      setError(t("login.err.weakPassword"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError(t("login.err.passwordMismatch"));
+      return;
+    }
+    setLoading(true);
+    const supabase = createClient();
+
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      email,
+      token: resetCode.trim(),
+      type: "recovery",
+    });
+    if (otpError) {
+      setError(t("login.err.badResetCode"));
+      setLoading(false);
+      return;
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) {
+      setError(updateError.message || t("login.err.resetFailed"));
+      setLoading(false);
+      return;
+    }
+
+    // The session came from an emailed code, not from proving knowledge of the
+    // password, so make them use the new one.
+    await supabase.auth.signOut();
+    setLoading(false);
+    router.push(`/login?role=${role}&notice=passwordUpdated`);
+    router.refresh();
   }
 
   /** Shared by all three roles: sign in, then refuse if the profile is a different role. */
@@ -307,8 +358,22 @@ function UnifiedLogin() {
             />
           )}
 
-          {recovery === "sent" && (
-            <ForgotSent email={email} accent={meta.accent} onBack={closeRecovery} />
+          {recovery === "code" && (
+            <ForgotCodeForm
+              email={email}
+              code={resetCode}
+              onCode={setResetCode}
+              newPassword={newPassword}
+              onNewPassword={setNewPassword}
+              confirmPassword={confirmPassword}
+              onConfirmPassword={setConfirmPassword}
+              onSubmit={handleResetWithCode}
+              onResend={handleForgot}
+              onBack={closeRecovery}
+              loading={loading}
+              error={error}
+              accent={meta.accent}
+            />
           )}
 
           {recovery === "off" && role === "customer" && customerMode === "sent" && (
@@ -478,24 +543,86 @@ function ForgotForm({
   );
 }
 
-function ForgotSent({ email, accent, onBack }: { email: string; accent: "amber" | "cyan"; onBack: () => void }) {
+function ForgotCodeForm({
+  email,
+  code,
+  onCode,
+  newPassword,
+  onNewPassword,
+  confirmPassword,
+  onConfirmPassword,
+  onSubmit,
+  onResend,
+  onBack,
+  loading,
+  error,
+  accent,
+}: {
+  email: string;
+  code: string;
+  onCode: (v: string) => void;
+  newPassword: string;
+  onNewPassword: (v: string) => void;
+  confirmPassword: string;
+  onConfirmPassword: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onResend: (e: React.FormEvent) => void;
+  onBack: () => void;
+  loading: boolean;
+  error: string | null;
+  accent: "amber" | "cyan";
+}) {
   const { t } = useLanguage();
   return (
-    <div className="text-center">
-      <div
-        className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full text-xl ${
-          accent === "amber" ? "bg-amber/15" : "bg-cyan/15"
-        }`}
+    <>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <h2 className="font-display text-base font-semibold">{t("login.resetTitle")}</h2>
+        <p className="text-xs leading-relaxed text-text-dim">{t("login.resetCodeIntro", { email })}</p>
+        <FormField
+          label={t("login.resetCode")}
+          type="text"
+          value={code}
+          onChange={onCode}
+          placeholder={t("login.ph.resetCode")}
+          accent={accent}
+        />
+        <FormField
+          label={t("login.newPassword")}
+          type="password"
+          value={newPassword}
+          onChange={onNewPassword}
+          placeholder="••••••••"
+          accent={accent}
+        />
+        <FormField
+          label={t("login.confirmPassword")}
+          type="password"
+          value={confirmPassword}
+          onChange={onConfirmPassword}
+          placeholder="••••••••"
+          accent={accent}
+        />
+        <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
+        <ErrorNotice error={error} />
+        <SubmitButton
+          loading={loading}
+          accent={accent}
+          label={t("login.resetSubmit")}
+          loadingLabel={t("login.updating")}
+        />
+      </form>
+      <p className="mt-3 text-center text-[11px] text-text-dim">{t("login.codeSpamHint")}</p>
+      <button
+        type="button"
+        onClick={onResend}
+        className={`mt-2 w-full text-center text-xs hover:underline ${accent === "amber" ? "text-amber" : "text-cyan"}`}
       >
-        ✉️
-      </div>
-      <h2 className="mb-2 font-display text-base font-semibold">{t("login.checkInbox")}</h2>
-      <p className="mb-1 text-xs leading-relaxed text-text-dim">{t("login.resetSent", { email })}</p>
-      <p className="mb-5 text-[11px] text-text-dim">{t("login.verifySpamHint")}</p>
-      <button type="button" onClick={onBack} className="w-full text-center text-xs text-text-dim hover:text-text">
+        {t("login.resendCode")}
+      </button>
+      <button type="button" onClick={onBack} className="mt-2 w-full text-center text-xs text-text-dim hover:text-text">
         {t("login.backToSignIn")}
       </button>
-    </div>
+    </>
   );
 }
 
