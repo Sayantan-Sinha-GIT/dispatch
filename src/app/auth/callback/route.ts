@@ -40,7 +40,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(deadLink);
   }
   if (!code && !tokenHash) {
-    return NextResponse.redirect(isRecovery ? deadLink : `${origin}/login?role=${role}&err=linkInvalid`);
+    // Supabase can answer a recovery link with the implicit flow, returning the
+    // session in the URL fragment: #access_token=...&type=recovery. A fragment
+    // is never sent to the server, so from here the request is indistinguishable
+    // from a link with nothing in it — and calling a perfectly good link dead is
+    // the worse failure. Hand it to the reset page, which can read the fragment.
+    // Browsers carry the fragment across a redirect when the target has none.
+    if (isRecovery) {
+      return NextResponse.redirect(`${origin}${nextPath}?role=${role}`);
+    }
+    return NextResponse.redirect(`${origin}/login?role=${role}&err=linkInvalid`);
   }
 
   const supabase = await createClient();

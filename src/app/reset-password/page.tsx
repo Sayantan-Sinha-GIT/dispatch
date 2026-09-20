@@ -43,8 +43,43 @@ function ResetPassword() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data }) => {
-      setHasSession(!!data.session);
+
+    /**
+     * Two shapes of recovery link reach this page.
+     *
+     * The PKCE one is already finished by the time we render: /auth/callback
+     * exchanged the code server-side and the session is in a cookie.
+     *
+     * The implicit one hands the session over in the URL fragment
+     * (#access_token=...&refresh_token=...&type=recovery). A fragment never
+     * reaches the server, so the callback could not act on it and forwarded
+     * the request here untouched. Adopting it is the only way that link works
+     * at all — and it is the one that survives being opened in a different
+     * browser from the one that asked for the reset, since it carries the
+     * whole session rather than half of a PKCE pair.
+     */
+    async function resolveSession() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) return true;
+
+      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+      if (!hash) return false;
+      const params = new URLSearchParams(hash);
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      if (!access_token || !refresh_token) return false;
+
+      const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (setErr) return false;
+
+      // Drop the tokens from the address bar so they are not left in history
+      // or leaked by a copied URL.
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      return true;
+    }
+
+    resolveSession().then((ok) => {
+      setHasSession(ok);
       setChecking(false);
     });
   }, []);
