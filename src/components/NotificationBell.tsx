@@ -80,6 +80,8 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
           setOpen((o) => !o);
           if (!open) markAllRead();
         }}
+        aria-label={t("a11y.notifications")}
+        aria-expanded={open}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-raised transition-colors hover:border-amber/40"
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

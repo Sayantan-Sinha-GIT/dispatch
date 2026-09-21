@@ -235,10 +235,11 @@ export default function RiderSignupPage() {
                 <p className="mt-1.5 text-[11px] text-text-dim">{t("login.passwordHint")}</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
+                <label htmlFor="rider-capacity" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
                   {t("rider.signup.capacity")}
                 </label>
                 <input
+                  id="rider-capacity"
                   type="number"
                   min={1}
                   max={20}

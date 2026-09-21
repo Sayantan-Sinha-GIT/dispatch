@@ -127,7 +127,7 @@ function Hero() {
   const copyFade = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
 
   return (
-    <section ref={ref} className="grain relative flex min-h-screen items-center overflow-hidden pt-24">
+    <section ref={ref} className="grain relative flex min-h-screen items-center overflow-hidden pb-28 pt-24">
       <motion.div style={{ y: imageY, scale: imageScale }} className="absolute inset-0">
         {/*
           A plain <picture> rather than next/image: this needs art direction,
@@ -157,7 +157,7 @@ function Hero() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#070a0f]/75 via-transparent to-[#070a0f]/85" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#070a0f] via-[#070a0f]/65 to-transparent sm:via-[#070a0f]/40" />
       {/* The only theme-aware layer: the seam where the photo meets the page. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-bg" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-bg" />
 
       {/* The dispatch route. Kept from the old hero - it is the one decorative
           element that says something true about the product. */}
@@ -226,7 +226,7 @@ function Hero() {
           </Link>
           <Link
             href="/login?role=rider"
-            className="rounded-full border border-cyan/40 bg-cyan/10 px-7 py-3.5 text-sm font-bold text-cyan backdrop-blur transition-transform hover:scale-[1.04] active:scale-95"
+            className="rounded-full border border-[#2dd4c4]/45 bg-[#2dd4c4]/10 px-7 py-3.5 text-sm font-bold text-[#2dd4c4] backdrop-blur transition-transform hover:scale-[1.04] active:scale-95"
           >
             {t("hero.becomeRider")}
           </Link>
@@ -245,7 +245,7 @@ function Hero() {
           className="relative mt-16 grid max-w-2xl grid-cols-3 gap-6 pt-8"
         >
           <div className="rule-fade absolute inset-x-0 top-0" />
-          <Stat value={5} suffix=" min" decimals={0} label={t("hero.stat1")} />
+          <Stat value={5} suffix={t("hero.minSuffix")} decimals={0} label={t("hero.stat1")} />
           <Stat value={3} suffix="×" decimals={0} label={t("hero.stat2")} />
           <Stat value={2} suffix="-opt" decimals={0} label={t("hero.stat3")} />
         </motion.div>
@@ -410,6 +410,12 @@ function LiveConsolePreview() {
     { label: "HSR Layout Sector 2", status: "delivered" },
     { label: "Whitefield Main Road", status: "pending" },
   ];
+  const KPI_KEY: Record<string, string> = {
+    pending: "pending",
+    offered: "awaitingAccept",
+    assigned: "inProgress",
+    delivered: "delivered",
+  };
   const colors: Record<string, string> = {
     pending: "bg-text-dim/20 text-text-dim",
     offered: "bg-amber/20 text-amber",
@@ -450,7 +456,7 @@ function LiveConsolePreview() {
                     key={`${t(`status.${r.status}`)}-${tick}-${i}`}
                     className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${colors[r.status]}`}
                   >
-                    {r.status}
+                    {t(`admin.kpi.${KPI_KEY[r.status]}`)}
                   </span>
                 </motion.div>
               ))}

@@ -71,10 +71,11 @@ export default function RiderOnboardingPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
-              Max orders per route
+            <label htmlFor="onboarding-capacity" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
+              {t("rider.signup.capacity")}
             </label>
             <input
+              id="onboarding-capacity"
               type="number"
               min={1}
               value={capacity}
@@ -85,7 +86,7 @@ export default function RiderOnboardingPage() {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">
-              Starting location (depot)
+              {t("rider.signup.depot")}
             </label>
             <button
               type="button"

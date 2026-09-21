@@ -135,6 +135,12 @@ export default function ShopCartPage() {
           <div className="flex flex-col items-center py-16">
             <Image src="/images/empty/cart.webp" alt="" width={150} height={150} className="mb-4 opacity-70" />
             <p className="text-center text-sm text-text-dim">{t("cart.empty")}</p>
+            <Link
+              href="/shop"
+              className="mt-5 rounded-full bg-amber px-6 py-2.5 text-sm font-bold text-bg shadow-lg shadow-amber/25 transition-transform hover:scale-[1.04] active:scale-95"
+            >
+              {t("roles.customer.cta")}
+            </Link>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -163,54 +169,56 @@ export default function ShopCartPage() {
           </div>
         )}
 
-        <section>
-          <h2 className="mb-2.5 font-display text-sm font-semibold">{t("cart.deliveryAddress")}</h2>
-          <div className="space-y-2.5">
-            <input
-              value={houseNo}
-              onChange={(e) => setHouseNo(e.target.value)}
-              placeholder={t("cart.houseNo")}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
-            />
-            <input
-              value={street}
-              onChange={(e) => setStreet(e.target.value)}
-              placeholder={t("cart.street")}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
-            />
-            <input
-              value={locality}
-              onChange={(e) => setLocality(e.target.value)}
-              placeholder={t("cart.locality")}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
-            />
-            <input
-              value={landmark}
-              onChange={(e) => setLandmark(e.target.value)}
-              placeholder={t("cart.landmark")}
-              className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
-            />
-          </div>
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setPickerOpen(true)}
-            className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-              coords ? "border border-success/40 bg-success/10 text-success" : "border border-amber/40 bg-amber/10 text-amber hover:bg-amber/20"
-            }`}
-          >
-            {coords ? (
-              <>
-                📍 {t("cart.locationPinned")}{" "}
-                <span className="font-mono text-[11px] opacity-70">
-                  ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
-                </span>
-              </>
-            ) : (
-              `🗺️ ${t("cart.pinOnMap")}`
-            )}
-          </motion.button>
-        </section>
+        {cart.length > 0 && (
+          <section>
+            <h2 className="mb-2.5 font-display text-sm font-semibold">{t("cart.deliveryAddress")}</h2>
+            <div className="space-y-2.5">
+              <input
+                value={houseNo}
+                onChange={(e) => setHouseNo(e.target.value)}
+                placeholder={t("cart.houseNo")}
+                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+              />
+              <input
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                placeholder={t("cart.street")}
+                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+              />
+              <input
+                value={locality}
+                onChange={(e) => setLocality(e.target.value)}
+                placeholder={t("cart.locality")}
+                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+              />
+              <input
+                value={landmark}
+                onChange={(e) => setLandmark(e.target.value)}
+                placeholder={t("cart.landmark")}
+                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+              />
+            </div>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setPickerOpen(true)}
+              className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+                coords ? "border border-success/40 bg-success/10 text-success" : "border border-amber/40 bg-amber/10 text-amber hover:bg-amber/20"
+              }`}
+            >
+              {coords ? (
+                <>
+                  📍 {t("cart.locationPinned")}{" "}
+                  <span className="font-mono text-[11px] opacity-70">
+                    ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+                  </span>
+                </>
+              ) : (
+                `🗺️ ${t("cart.pinOnMap")}`
+              )}
+            </motion.button>
+          </section>
+        )}
 
         {cart.length > 0 && (
           <section className="rounded-xl border border-border bg-surface p-4">

@@ -43,9 +43,13 @@ export async function middleware(request: NextRequest) {
     // is the useful answer. Gating it here would bounce those people to a
     // sign-in form that cannot explain what went wrong.
     path === "/reset-password";
-  const isPublic = isAuthRoute || path === "/";
+  // Only the three portals are private. Everything else - the landing page,
+  // and any path that does not exist - is left to render normally, so a
+  // mistyped URL shows "page not found" instead of a sign-in form that
+  // implies the visitor was logged out.
+  const isPortal = path.startsWith("/admin") || path.startsWith("/rider") || path.startsWith("/shop");
 
-  if (!user && !isPublic) {
+  if (!user && isPortal && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("role", path.startsWith("/rider") ? "rider" : path.startsWith("/shop") ? "customer" : "admin");

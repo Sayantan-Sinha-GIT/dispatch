@@ -133,9 +133,26 @@ export default function ShopCatalogPage() {
                     }`}
                   />
                 ) : (
-                  /* "All" has no photograph of its own - a soft wash keeps the
-                     row visually even instead of leaving one empty slot. */
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber/35 via-surface-raised to-cyan/25" />
+                  /* "All" has no photograph of its own, so it shows four of the
+                     others as a mosaic - it reads as "everything" and keeps the
+                     row even. The old colour wash looked like an empty slot. */
+                  <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-black">
+                    {Object.values(CATEGORY_IMAGE)
+                      .slice(0, 4)
+                      .map((src) => (
+                        <div key={src} className="relative">
+                          <Image
+                            src={src}
+                            alt=""
+                            fill
+                            sizes="56px"
+                            className={`object-cover transition-transform duration-500 group-hover:scale-110 ${
+                              active ? "scale-105" : ""
+                            }`}
+                          />
+                        </div>
+                      ))}
+                  </div>
                 )}
                 <div className={`absolute inset-0 transition-colors ${active ? "bg-black/35" : "bg-black/55 group-hover:bg-black/40"}`} />
                 <span

@@ -297,6 +297,9 @@ export default function RiderDashboard() {
             whileTap={{ scale: 0.96 }}
             onClick={toggleStatus}
             disabled={togglingStatus || !rider}
+            role="switch"
+            aria-checked={isActive}
+            aria-label={t("rider.statusLabel")}
             className={`relative h-9 w-16 rounded-full transition-colors ${isActive ? "bg-success" : "bg-border"}`}
           >
             <motion.span
