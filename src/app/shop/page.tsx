@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addToCart, cartCount, cartSubtotal } from "@/lib/cart";
 import { useCart } from "@/lib/browserState";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
@@ -35,6 +36,7 @@ export default function ShopCatalogPage() {
   const [category, setCategory] = useState<string>("All");
   const [query, setQuery] = useState("");
   const [viewing, setViewing] = useState<Product | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -44,6 +46,7 @@ export default function ShopCatalogPage() {
       .order("category")
       .order("name")
       .then(({ data }) => setProducts(data ?? []));
+    supabase.auth.getUser().then(({ data }) => setProfileId(data.user?.id ?? null));
 
   }, []);
 
@@ -81,6 +84,7 @@ export default function ShopCatalogPage() {
           <div className="flex items-center gap-2">
             <LanguageToggle className="hidden sm:flex" />
             <ThemeToggle className="hidden sm:flex" />
+            {profileId && <NotificationBell profileId={profileId} accent="amber" />}
             <Link
               href="/shop/orders"
               className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-dim transition-colors hover:border-amber/50 hover:text-text"

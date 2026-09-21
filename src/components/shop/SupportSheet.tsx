@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLanguage } from "@/components/LanguageProvider";
+import { createClient } from "@/lib/supabase/client";
+import type { Tables } from "@/lib/supabase/types";
+
+type Ticket = Pick<Tables<"support_tickets">, "id" | "subject" | "status" | "admin_reply" | "created_at">;
 
 /** Lets a customer raise a support request against a specific order. */
 export function SupportSheet({ orderId }: { orderId?: string | null }) {
@@ -13,6 +17,40 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+
+  // Support answers used to go only into a notification, and the customer
+  // screens had no notification bell - so a reply was written and never
+  // seen. The order now shows its own requests, and updates as they're
+  // answered.
+  const fetchTickets = useCallback(async () => {
+    if (!orderId) return [] as Ticket[];
+    const { data } = await createClient()
+      .from("support_tickets")
+      .select("id, subject, status, admin_reply, created_at")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: false });
+    return (data ?? []) as Ticket[];
+  }, [orderId]);
+
+  useEffect(() => {
+    if (!orderId) return;
+    let live = true;
+    const supabase = createClient();
+    fetchTickets().then((list) => live && setTickets(list));
+    const channel = supabase
+      .channel(`order-support-${orderId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets", filter: `order_id=eq.${orderId}` },
+        () => fetchTickets().then((list) => live && setTickets(list)),
+      )
+      .subscribe();
+    return () => {
+      live = false;
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, fetchTickets]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +68,7 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
       setSent(true);
       setSubject("");
       setMessage("");
+      setTickets(await fetchTickets());
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.err.generic"));
     } finally {
@@ -39,6 +78,41 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
 
   return (
     <>
+      {tickets.length > 0 && (
+        <section className="mb-3 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">{t("tracking.yourRequests")}</p>
+          {tickets.map((tk) => {
+            const open = tk.status === "open";
+            return (
+              <div key={tk.id} className="rounded-2xl border border-border bg-surface/70 p-3.5 backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate text-sm font-semibold">{tk.subject}</p>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                      open ? "bg-amber/15 text-amber" : "bg-success/15 text-success"
+                    }`}
+                  >
+                    {open ? t("admin.support.open") : t("admin.support.resolved")}
+                  </span>
+                </div>
+                {open ? (
+                  <p className="mt-1.5 text-xs text-text-dim">{t("tracking.awaitingReply")}</p>
+                ) : tk.admin_reply ? (
+                  <div className="mt-2 rounded-xl bg-success/10 px-3 py-2 text-sm text-text">
+                    <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-success">
+                      {t("tracking.supportReplied")}
+                    </p>
+                    {tk.admin_reply}
+                  </div>
+                ) : (
+                  <p className="mt-1.5 text-xs text-success">{t("tracking.resolvedNoReply")}</p>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       <button
         onClick={() => {
           setOpen(true);
@@ -51,13 +125,15 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
 
       <AnimatePresence>
         {open && (
+          {/* Above Leaflet's map controls, which sit at z-index 1000 - at an equal
+              level the zoom buttons showed through this sheet. */}
           <motion.div
             key="support-sheet"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+            className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
           >
             <motion.div
               initial={{ y: "100%", opacity: 0 }}

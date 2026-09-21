@@ -16,6 +16,10 @@ const ICONS: Record<string, string> = {
   order_reassigned: "🔁",
   order_unassigned: "↩️",
   rider_status: "🟢",
+  support_reply: "💬",
+  support_ticket: "🎫",
+  order_cancelled: "✖️",
+  order_delivered: "✅",
 };
 
 export function NotificationBell({ profileId, accent = "amber" }: { profileId: string; accent?: "amber" | "cyan" }) {
