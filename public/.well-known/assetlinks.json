@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.dispatch.app",
-      "sha256_cert_fingerprints": ["PLACEHOLDER_REPLACE_AFTER_BUBBLEWRAP_INIT"]
+      "sha256_cert_fingerprints": [
+        "CF:80:9E:22:C6:34:B1:B7:78:F2:46:B8:6A:4C:0B:05:39:E4:39:81:22:95:6A:0F:3B:76:6F:7F:40:02:2F:BC"
+      ]
     }
   }
 ]
