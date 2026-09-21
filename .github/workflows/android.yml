@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "17"  # Bubblewrap rejects anything else
 
       - uses: actions/setup-node@v5
         with:
