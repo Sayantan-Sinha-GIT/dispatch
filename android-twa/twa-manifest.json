@@ -1,0 +1,32 @@
+{
+  "packageId": "com.dispatch.app",
+  "host": "delivery-route-optimizer-eight.vercel.app",
+  "name": "Dispatch",
+  "launcherName": "Dispatch",
+  "display": "standalone",
+  "themeColor": "#0a0d12",
+  "navigationColor": "#0a0d12",
+  "backgroundColor": "#0a0d12",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://delivery-route-optimizer-eight.vercel.app/icons/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://delivery-route-optimizer-eight.vercel.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://delivery-route-optimizer-eight.vercel.app/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "maskableIconUrl": "https://delivery-route-optimizer-eight.vercel.app/icons/maskable-512.png"
+}
