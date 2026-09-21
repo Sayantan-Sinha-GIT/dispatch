@@ -188,11 +188,15 @@ export default function AdminDashboard() {
     <div className="relative min-h-screen">
       <PageBackground accent="both" />
 
-      <header className="relative overflow-hidden border-b border-border/60">
-        {/* A street network behind the command bar: this console exists to
-            move things across a city, and the header should say so. */}
-        <div className="admin-map-texture pointer-events-none absolute inset-0" aria-hidden />
-        <div className="pointer-events-none absolute -left-24 top-0 h-72 w-[40rem] rounded-full bg-amber/10 blur-[100px]" />
+      {/* Not overflow-hidden: the notification panel hangs below the header
+          and was being cut off. Only the decoration is clipped. */}
+      <header className="relative z-20 border-b border-border/60">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          {/* A street network behind the command bar: this console exists to
+              move things across a city, and the header should say so. */}
+          <div className="admin-map-texture absolute inset-0" />
+          <div className="absolute -left-24 top-0 h-72 w-[40rem] rounded-full bg-amber/10 blur-[100px]" />
+        </div>
 
         <div className="relative mx-auto max-w-[1600px] px-4 pt-5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
@@ -271,7 +275,9 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      {/* z-0 makes this its own stacking context, so the map's panes and controls
+          (z-index up to 1000) stay beneath the header and its dropdowns. */}
+      <main className="relative z-0 mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* Keyed rather than wrapped in AnimatePresence: with React 19 an
             exit animation can wait forever for a signal that never comes and
             leave the old tab on screen. An entrance alone cannot deadlock. */}
