@@ -124,9 +124,8 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
       </button>
 
       <AnimatePresence>
+        {/* z-[1500]: above Leaflet's map controls, which sit at z-index 1000. */}
         {open && (
-          {/* Above Leaflet's map controls, which sit at z-index 1000 - at an equal
-              level the zoom buttons showed through this sheet. */}
           <motion.div
             key="support-sheet"
             initial={{ opacity: 0 }}

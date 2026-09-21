@@ -53,9 +53,9 @@ export function OfferModal({
   const distanceComponent = Math.round(distanceKm * PAYOUT_PER_KM);
   const busy = accepting || declining;
 
+  // z-[1500]: above Leaflet's map controls, which sit at z-index 1000. At an
+  // equal level the zoom buttons showed through this sheet, over the payout.
   return (
-    {/* Above Leaflet's map controls, which sit at z-index 1000 - at an equal
-        level the zoom buttons showed through this sheet. */}
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
