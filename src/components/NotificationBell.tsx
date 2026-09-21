@@ -109,7 +109,10 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-11 z-[1100] w-80 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-2xl shadow-black/50"
+            // On a phone the bell is not always at the screen's right edge (the
+            // shop header has buttons after it), so a panel hung from the bell
+            // ran off the left side. Below `sm` it spans the screen instead.
+            className="fixed inset-x-3 top-16 z-[1600] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-2xl shadow-black/50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80"
           >
             <div className="border-b border-border px-4 py-2.5">
               <p className="text-sm font-semibold">{t("notif.title")}</p>
