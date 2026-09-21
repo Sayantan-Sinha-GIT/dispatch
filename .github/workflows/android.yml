@@ -45,8 +45,11 @@ jobs:
           echo "Using command-line tools at $TOOLS"
           ln -sfn "${TOOLS}bin" "$ANDROID_HOME/bin"
           ln -sfn "${TOOLS}lib" "$ANDROID_HOME/lib"
-          yes | "$ANDROID_HOME/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/bin/sdkmanager" "build-tools;36.1.0" "platforms;android-36" "platform-tools"
+          # Run the real sdkmanager, not the link: it locates the SDK from its
+          # own path and cannot through a symlink, so name the root explicitly.
+          SDKM="${TOOLS}bin/sdkmanager --sdk_root=$ANDROID_HOME"
+          yes | $SDKM --licenses > /dev/null || true
+          $SDKM "build-tools;36.1.0" "platforms;android-36" "platform-tools"
 
       - name: Configure Bubblewrap
         run: |
