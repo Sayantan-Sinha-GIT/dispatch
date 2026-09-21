@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -33,9 +33,17 @@ export function LocationControl({ rider, onChanged }: { rider: Rider; onChanged:
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  // A clock held in state and advanced on a timer, so "is the GPS fix still
+  // fresh" goes stale on its own instead of only when something re-renders.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const liveFresh =
     !!rider.location_updated_at &&
-    Date.now() - new Date(rider.location_updated_at).getTime() < LIVE_MAX_AGE_MS &&
+    now - new Date(rider.location_updated_at).getTime() < LIVE_MAX_AGE_MS &&
     rider.current_lat != null &&
     rider.current_lng != null;
 

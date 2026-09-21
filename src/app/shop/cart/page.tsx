@@ -6,7 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { cartSubtotal, clearCart, getCart, setQty, type CartItem } from "@/lib/cart";
+import { cartSubtotal, clearCart, setQty } from "@/lib/cart";
+import { useCart } from "@/lib/browserState";
 import { LocationPickerModal } from "@/components/LocationPickerModal";
 import { useLanguage } from "@/components/LanguageProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -23,7 +24,7 @@ const FALLBACK_CENTER = { lat: 22.5726, lng: 88.3639 };
 export default function ShopCartPage() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const cart = useCart();
   const [houseNo, setHouseNo] = useState("");
   const [street, setStreet] = useState("");
   const [locality, setLocality] = useState("");
@@ -34,13 +35,6 @@ export default function ShopCartPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submittingRef = useRef(false);
-
-  useEffect(() => {
-    setCart(getCart());
-    const onUpdate = () => setCart(getCart());
-    window.addEventListener("cart-updated", onUpdate);
-    return () => window.removeEventListener("cart-updated", onUpdate);
-  }, []);
 
   // Open the map somewhere the customer plausibly is: their last delivery
   // address first (people reorder to the same place), then the device's own

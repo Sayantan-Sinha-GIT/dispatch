@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
+import { LANG_EVENT, useStoredLang } from "@/lib/browserState";
 import { dictionary, type Lang } from "@/lib/i18n";
 
 export type TParams = Record<string, string | number>;
@@ -36,21 +37,21 @@ const LanguageContext = createContext<{
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
+  const lang: Lang = useStoredLang();
 
+  // Keep <html lang> honest for screen readers and hyphenation.
   useEffect(() => {
-    const stored = localStorage.getItem("lang") as Lang | null;
-    if (stored === "en" || stored === "hi") setLangState(stored);
-  }, []);
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   function setLang(l: Lang) {
-    setLangState(l);
     try {
       localStorage.setItem("lang", l);
-      document.documentElement.lang = l;
     } catch {
-      // private mode / blocked storage — the toggle still works for this session
+      // Private mode or blocked storage: nothing persists, and the toggle
+      // cannot take effect either, since the stored value is the source.
     }
+    window.dispatchEvent(new Event(LANG_EVENT));
   }
 
   const t: TFunction = (key, params) => translate(lang, key, params);

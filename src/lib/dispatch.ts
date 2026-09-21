@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { haversineDistanceKm } from "@/lib/routing/haversine";
 import { optimizeRoutes } from "@/lib/routing/optimizer";
 import { quotePayout } from "@/lib/pricing";
-import { MAX_OFFER_DISTANCE_KM, isWithinServiceRange } from "@/lib/serviceArea";
+import { isWithinServiceRange } from "@/lib/serviceArea";
 import type { RoutingOrder, RoutingRider } from "@/lib/routing/types";
 import type { Database } from "@/lib/supabase/types";
 

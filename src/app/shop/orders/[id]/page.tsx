@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { PageBackground } from "@/components/PageBackground";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -35,17 +35,16 @@ function stepIndex(status: string) {
 const CONFETTI = ["🎉", "✨", "🎊", "⭐", "💛"];
 
 function Confetti() {
-  const pieces = useMemo(
-    () =>
-      Array.from({ length: 24 }, (_, i) => ({
-        id: i,
-        emoji: CONFETTI[i % CONFETTI.length],
-        left: Math.random() * 100,
-        delay: Math.random() * 0.6,
-        duration: 1.8 + Math.random() * 1.2,
-        drift: (Math.random() - 0.5) * 120,
-      })),
-    [],
+  // A lazy initialiser runs once, at mount, so the randomness stays out of render.
+  const [pieces] = useState(() =>
+    Array.from({ length: 24 }, (_, i) => ({
+      id: i,
+      emoji: CONFETTI[i % CONFETTI.length],
+      left: Math.random() * 100,
+      delay: Math.random() * 0.6,
+      duration: 1.8 + Math.random() * 1.2,
+      drift: (Math.random() - 0.5) * 120,
+    })),
   );
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

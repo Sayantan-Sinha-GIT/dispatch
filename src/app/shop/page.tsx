@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { addToCart, cartCount, cartSubtotal, getCart, type CartItem } from "@/lib/cart";
+import { addToCart, cartCount, cartSubtotal } from "@/lib/cart";
+import { useCart } from "@/lib/browserState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -30,7 +31,7 @@ export default function ShopCatalogPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const cart = useCart();
   const [category, setCategory] = useState<string>("All");
   const [query, setQuery] = useState("");
   const [viewing, setViewing] = useState<Product | null>(null);
@@ -44,10 +45,6 @@ export default function ShopCatalogPage() {
       .order("name")
       .then(({ data }) => setProducts(data ?? []));
 
-    setCart(getCart());
-    const onUpdate = () => setCart(getCart());
-    window.addEventListener("cart-updated", onUpdate);
-    return () => window.removeEventListener("cart-updated", onUpdate);
   }, []);
 
   async function handleSignOut() {

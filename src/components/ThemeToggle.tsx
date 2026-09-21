@@ -1,23 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useThemeName } from "@/lib/browserState";
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { t } = useLanguage();
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const stored = (localStorage.getItem("theme") as "dark" | "light" | null) ?? "dark";
-    setTheme(stored);
-  }, []);
+  const theme = useThemeName();
 
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Blocked storage: the switch still applies for this visit.
+    }
   }
 
   return (

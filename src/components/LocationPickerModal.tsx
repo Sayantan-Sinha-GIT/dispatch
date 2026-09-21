@@ -86,6 +86,7 @@ export function LocationPickerModal({
   const [geocoding, setGeocoding] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geocodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flyTokenRef = useRef(0);
 
   /**
    * Move the pin to a chosen point.
@@ -96,7 +97,9 @@ export function LocationPickerModal({
    * street could place an order against the previous coordinates entirely.
    */
   function moveTo(lat: number, lng: number) {
-    setFlyTo({ lat, lng, token: Date.now() });
+    // The token only has to differ from the last one to re-trigger the fly.
+    flyTokenRef.current += 1;
+    setFlyTo({ lat, lng, token: flyTokenRef.current });
     handleCenterChange(lat, lng);
   }
 
