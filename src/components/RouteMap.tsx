@@ -3,7 +3,8 @@
 import { useLanguage } from "@/components/LanguageProvider";
 
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { ThemedTileLayer } from "@/components/ThemedTileLayer";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ROUTE_COLORS } from "@/lib/routeColors";
@@ -246,10 +247,7 @@ export function RouteMap({
         scrollWheelZoom
         style={{ height: "100%", width: "100%", borderRadius: "0.75rem" }}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors'
-        />
+        <ThemedTileLayer />
         <FitBounds points={allPoints} />
         <FocusRider rider={focusedRider} />
         <FocusOrder order={focusedOrder} />

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, useMapEvents } from "react-leaflet";
+import { ThemedTileLayer } from "@/components/ThemedTileLayer";
 import "leaflet/dist/leaflet.css";
 
 function MapController({
@@ -47,7 +48,7 @@ export function LocationPickerMap({
 }) {
   return (
     <MapContainer center={[initialLat, initialLng]} zoom={15} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+      <ThemedTileLayer />
       <MapController onMove={onChange} flyToSignal={flyToSignal} />
     </MapContainer>
   );

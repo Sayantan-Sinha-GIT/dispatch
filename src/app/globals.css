@@ -79,6 +79,26 @@ body {
   color: var(--text) !important;
 }
 
+/* Night basemap. Inverting the stock tiles and rotating the hue back puts
+   water, parks and roads in roughly their usual colours on a dark ground;
+   the desaturation keeps the map quieter than the routes drawn on top.
+   Only the tile pane is filtered, so markers and route lines keep their
+   true colours. */
+:root:not([data-theme="light"]) .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.55);
+}
+
+.leaflet-control-zoom a,
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface-raised) 88%, transparent) !important;
+  color: var(--text-dim) !important;
+  border-color: var(--border) !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--text-dim) !important;
+}
+
 @keyframes gradient-shift {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -138,6 +158,28 @@ body {
 .rule-fade {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Admin command bar texture.
+
+   A street network behind the console header. It fades out downward so it
+   frames the title and the pipeline rather than sitting under the tabs.
+   The source is a dark map, so the light theme inverts it and turns it well
+   down - dark roads on a pale page would read as a stain.
+--------------------------------------------------------------------------- */
+.admin-map-texture {
+  background-image: url("/images/texture/map-paper.webp");
+  background-size: 640px;
+  background-position: 30% 40%;
+  opacity: 0.6;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, rgb(0 0 0 / 0.55) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, rgb(0 0 0 / 0.55) 55%, transparent 100%);
+}
+
+:root[data-theme="light"] .admin-map-texture {
+  filter: invert(1) hue-rotate(180deg) saturate(0.7);
+  opacity: 0.28;
 }
 
 @media (prefers-reduced-motion: reduce) {
