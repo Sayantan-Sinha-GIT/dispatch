@@ -26,20 +26,31 @@ export function ProductsTab() {
 
   useEffect(() => {
     if (!error) return;
-    const t = setTimeout(() => setError(null), 5000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
   }, [error]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name || !form.category || !form.unit || !form.price) return;
+    const name = form.name.trim();
+    const category = form.category.trim();
+    const unit = form.unit.trim();
+    if (!name || !category || !unit || !form.price.trim()) {
+      setError(t("admin.products.err.required"));
+      return;
+    }
+    const price = Number(form.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      setError(t("admin.products.err.price"));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       const res = await fetch("/api/admin/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, price: Number(form.price) }),
+        body: JSON.stringify({ name, category, unit, price }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("admin.products.err.add"));
@@ -144,7 +155,7 @@ export function ProductsTab() {
                   {p.in_stock ? t("admin.products.inStock") : t("shop.outOfStock")}
                 </button>
                 <button onClick={() => remove(p)} className="rounded-lg bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
-                  Delete
+                  {t("common.delete")}
                 </button>
               </div>
             </div>
