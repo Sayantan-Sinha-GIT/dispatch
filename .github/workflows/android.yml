@@ -19,31 +19,34 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: android-actions/setup-android@v3
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
 
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
-      # Bubblewrap resolves the command-line tools at <sdk>/bin or <sdk>/tools,
-      # but the modern SDK puts them under <sdk>/cmdline-tools/latest. Without
-      # this link `bubblewrap doctor` rejects a perfectly good SDK.
+      # The runner image ships an Android SDK, so no setup action is needed
+      # (android-actions/setup-android@v3 tries to install the long-removed
+      # "tools" package and fails). The command-line tools live under a
+      # versioned folder such as cmdline-tools/16.0, but Bubblewrap only looks
+      # for them at <sdk>/bin, so link whichever version is present.
       - name: Lay out the SDK the way Bubblewrap expects
         run: |
-          ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/bin"
-          ln -s "$ANDROID_HOME/cmdline-tools/latest/lib" "$ANDROID_HOME/lib"
-          yes | sdkmanager --licenses > /dev/null
-          sdkmanager "build-tools;36.1.0" "platforms;android-36" "platform-tools"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          TOOLS=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/ | sort -V | tail -1)
+          echo "Using command-line tools at $TOOLS"
+          ln -sfn "${TOOLS}bin" "$ANDROID_HOME/bin"
+          ln -sfn "${TOOLS}lib" "$ANDROID_HOME/lib"
+          yes | "$ANDROID_HOME/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/bin/sdkmanager" "build-tools;36.1.0" "platforms;android-36" "platform-tools"
 
       - name: Configure Bubblewrap
         run: |
