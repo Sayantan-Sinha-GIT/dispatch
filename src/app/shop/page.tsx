@@ -43,6 +43,7 @@ export default function ShopCatalogPage() {
     supabase
       .from("products")
       .select("*")
+      .eq("is_listed", true)
       .order("category")
       .order("name")
       .then(({ data }) => setProducts(data ?? []));

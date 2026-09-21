@@ -45,6 +45,12 @@ export async function POST(request: NextRequest) {
     const product = products.find((p) => p.id === i.productId)!;
     return { product_id: product.id, name: product.name, unit: product.unit, price: product.price, qty: i.qty };
   });
+  // A cart can outlive a listing: the customer added it, then an admin took
+  // it off the shop. The service-role query above still sees it, so check.
+  const delisted = products.find((p) => !p.is_listed);
+  if (delisted) {
+    return NextResponse.json({ error: `${delisted.name} is no longer sold — remove it from your cart` }, { status: 400 });
+  }
   const outOfStock = products.find((p) => !p.in_stock);
   if (outOfStock) {
     return NextResponse.json({ error: `${outOfStock.name} just went out of stock` }, { status: 400 });

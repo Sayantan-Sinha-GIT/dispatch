@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("role").eq("id", user.id).single();
-  return profile?.role === "admin" ? admin : null;
-}
+import { requireAdmin } from "@/lib/adminAuth";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -24,9 +12,16 @@ export async function POST(request: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { name, category, unit, price } = await request.json();
+  const body = await request.json();
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const category = typeof body.category === "string" ? body.category.trim() : "";
+  const unit = typeof body.unit === "string" ? body.unit.trim() : "";
+  const price = body.price;
   if (!name || !category || !unit || price == null) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  if (name.length > 120 || category.length > 40 || unit.length > 30) {
+    return NextResponse.json({ error: "Name, category or unit is too long" }, { status: 400 });
   }
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
     return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
@@ -34,7 +29,15 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await admin
     .from("products")
-    .insert({ name, category, unit, price, image_gradient: "from-slate-700 to-slate-900" })
+    .insert({
+      name,
+      category,
+      unit,
+      price,
+      // A product can be created as a draft and listed once its photo is in.
+      is_listed: body.is_listed !== false,
+      image_gradient: "from-slate-700 to-slate-900",
+    })
     .select("*")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

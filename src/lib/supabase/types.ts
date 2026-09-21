@@ -321,6 +321,7 @@ export type Database = {
           image_gradient: string
           image_url: string | null
           in_stock: boolean
+          is_listed: boolean
           name: string
           price: number
           unit: string
@@ -332,6 +333,7 @@ export type Database = {
           image_gradient?: string
           image_url?: string | null
           in_stock?: boolean
+          is_listed?: boolean
           name: string
           price: number
           unit: string
@@ -343,6 +345,7 @@ export type Database = {
           image_gradient?: string
           image_url?: string | null
           in_stock?: boolean
+          is_listed?: boolean
           name?: string
           price?: number
           unit?: string
