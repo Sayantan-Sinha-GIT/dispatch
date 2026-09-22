@@ -1,7 +1,7 @@
 # Android TWA
 
 This folder holds the *source* of the Android app: a Trusted Web Activity that
-wraps https://delivery-route-optimizer-eight.vercel.app in a native shell.
+wraps https://dispatch-delivery.vercel.app in a native shell.
 
 Only `twa-manifest.json` is committed. Everything else — the generated Gradle
 project, the keystore, the APK — is built on demand and ignored by git.
