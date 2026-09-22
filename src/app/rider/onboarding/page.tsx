@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AuthBackground } from "@/components/AuthBackground";
 import { useLanguage } from "@/components/LanguageProvider";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RiderOnboardingPage() {
   const router = useRouter();
@@ -15,6 +16,16 @@ export default function RiderOnboardingPage() {
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // A rider who has already set up has nothing to do here: go to work.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: rider } = await supabase.from("riders").select("id").eq("profile_id", data.user.id).maybeSingle();
+      if (rider) router.replace("/rider");
+    });
+  }, [router]);
 
   function useMyLocation() {
     setLocating(true);

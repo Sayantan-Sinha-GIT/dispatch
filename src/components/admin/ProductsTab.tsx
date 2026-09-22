@@ -738,7 +738,7 @@ export function ProductsTab() {
                           aria-label={confirming ? t("admin.tip.confirmDelete") : t("common.delete")}
                           title={confirming ? t("admin.tip.confirmDelete") : t("common.delete")}
                           className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold transition-all disabled:opacity-50 ${
-                            confirming ? "bg-danger text-white" : "bg-danger/10 text-danger ring-1 ring-danger/25 hover:bg-danger/20"
+                            confirming ? "bg-danger text-white" : "bg-surface text-danger/85 ring-1 ring-border/70 hover:bg-danger/15 hover:text-danger"
                           }`}
                         >
                           {confirming ? (

@@ -65,14 +65,21 @@ function Confetti() {
 }
 
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t, lang } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [missing, setMissing] = useState(false);
   const [justDelivered, setJustDelivered] = useState(false);
+  // A mangled link is simply not an order; asking the database about it only
+  // earns a 400 from Postgres, which cannot compare text to a uuid.
+  const validId = UUID.test(id);
+  const notFound = missing || !validId;
 
   useEffect(() => {
+    if (!validId) return;
     const supabase = createClient();
     const load = () =>
       supabase
@@ -82,7 +89,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
         .maybeSingle()
         .then(({ data }) => {
           if (!data) {
-            setNotFound(true);
+            setMissing(true);
             return;
           }
           setOrder((prev) => {
@@ -103,7 +110,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id]);
+  }, [id, validId]);
 
   if (notFound) {
     return (
