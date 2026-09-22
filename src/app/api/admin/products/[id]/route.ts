@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PRODUCT_IMAGE_BUCKET, productImagePath, requireAdmin } from "@/lib/adminAuth";
 import type { TablesUpdate } from "@/lib/supabase/types";
+import { isStock } from "@/lib/stock";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,7 +17,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       patch[key] = value;
     }
   }
-  if ("in_stock" in body) patch.in_stock = !!body.in_stock;
+  if ("stock_qty" in body) {
+    if (!isStock(body.stock_qty)) {
+      return NextResponse.json({ error: "Quantity must be a whole number from 0 to 100000" }, { status: 400 });
+    }
+    patch.stock_qty = body.stock_qty;
+  }
   if ("is_listed" in body) patch.is_listed = !!body.is_listed;
   if ("price" in body) {
     if (typeof body.price !== "number" || !Number.isFinite(body.price) || body.price <= 0) {

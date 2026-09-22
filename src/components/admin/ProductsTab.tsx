@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/components/LanguageProvider";
 import { ProductImage } from "@/components/shop/ProductImage";
 import type { Tables } from "@/lib/supabase/types";
+import { createClient } from "@/lib/supabase/client";
+import { isStock } from "@/lib/stock";
 import { BoxIcon, ImageIcon, SearchIcon, TrashIcon } from "./icons";
 
 type Product = Tables<"products">;
@@ -47,7 +49,7 @@ export function ProductsTab() {
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [form, setForm] = useState({ name: "", category: "", unit: "", price: "" });
+  const [form, setForm] = useState({ name: "", category: "", unit: "", price: "", stock: "" });
   const [listNow, setListNow] = useState(true);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export function ProductsTab() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState<{ id: string; value: string } | null>(null);
+  const [editingStock, setEditingStock] = useState<{ id: string; value: string } | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
@@ -77,8 +80,17 @@ export function ProductsTab() {
       setProducts(list);
       setLoaded(true);
     });
+    // Orders move stock while the tab is open, so follow the table live.
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin-products")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        fetchProducts().then((list) => live && setProducts(list));
+      })
+      .subscribe();
     return () => {
       live = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -116,7 +128,7 @@ export function ProductsTab() {
       all: products.length,
       listed: products.filter((p) => p.is_listed).length,
       delisted: products.filter((p) => !p.is_listed).length,
-      out: products.filter((p) => !p.in_stock).length,
+      out: products.filter((p) => p.stock_qty === 0).length,
     }),
     [products],
   );
@@ -128,7 +140,7 @@ export function ProductsTab() {
         view === "all" ||
         (view === "listed" && p.is_listed) ||
         (view === "delisted" && !p.is_listed) ||
-        (view === "out" && !p.in_stock);
+        (view === "out" && p.stock_qty === 0);
       return inView && (!q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
     });
     const map = new Map<string, Product[]>();
@@ -165,13 +177,18 @@ export function ProductsTab() {
     const name = form.name.trim();
     const category = form.category.trim();
     const unit = form.unit.trim();
-    if (!name || !category || !unit || !form.price.trim()) {
+    if (!name || !category || !unit || !form.price.trim() || !form.stock.trim()) {
       setError(t("admin.products.err.required"));
       return;
     }
     const price = Number(form.price);
     if (!Number.isFinite(price) || price <= 0) {
       setError(t("admin.products.err.price"));
+      return;
+    }
+    const stockQty = Number(form.stock);
+    if (!isStock(stockQty)) {
+      setError(t("admin.products.err.stockQty"));
       return;
     }
     setSaving(true);
@@ -183,7 +200,7 @@ export function ProductsTab() {
       const res = await fetch("/api/admin/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, category, unit, price, is_listed: listNow && !photo }),
+        body: JSON.stringify({ name, category, unit, price, stock_qty: stockQty, is_listed: listNow && !photo }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("admin.products.err.add"));
@@ -202,7 +219,7 @@ export function ProductsTab() {
         }
       }
 
-      setForm({ name: "", category: "", unit: "", price: "" });
+      setForm({ name: "", category: "", unit: "", price: "", stock: "" });
       clearPhoto();
       setJustAdded(id);
       // If the photo failed, the error above explains it and takes precedence.
@@ -229,10 +246,23 @@ export function ProductsTab() {
     }
   }
 
-  function toggleStock(p: Product) {
-    // Flip locally first; the switch should move when it is pressed.
-    setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, in_stock: !p.in_stock } : x)));
-    run(p.id, () => patchProduct(p.id, { in_stock: !p.in_stock }), t("admin.products.err.stock"));
+  function setStock(p: Product, qty: number) {
+    if (!isStock(qty)) {
+      setError(t("admin.products.err.stockQty"));
+      return;
+    }
+    if (qty === p.stock_qty) return;
+    // Move the number locally first; the count should change when it is pressed.
+    setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, stock_qty: qty, in_stock: qty > 0 } : x)));
+    run(p.id, () => patchProduct(p.id, { stock_qty: qty }), t("admin.products.err.stock"));
+  }
+
+  function saveStock(p: Product) {
+    if (!editingStock) return;
+    const value = editingStock.value.trim();
+    setEditingStock(null);
+    if (value === "") return;
+    setStock(p, Number(value));
   }
 
   function toggleListing(p: Product) {
@@ -428,6 +458,18 @@ export function ProductsTab() {
               </div>
             </Field>
           </div>
+          <Field label={t("admin.products.ph.stock")}>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              value={form.stock}
+              onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
+              className={`${field} tabular-nums`}
+            />
+            <span className="mt-1 block text-[11px] leading-relaxed text-text-dim">{t("admin.products.stockHint")}</span>
+          </Field>
 
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-bg/40 px-3.5 py-2.5 ring-1 ring-border/60">
             <span>
@@ -543,7 +585,7 @@ export function ProductsTab() {
                             alt=""
                             sizes="64px"
                             zoomOnHover={false}
-                            className={`h-full w-full ${p.in_stock && p.is_listed ? "" : "grayscale"}`}
+                            className={`h-full w-full ${p.stock_qty > 0 && p.is_listed ? "" : "grayscale"}`}
                           />
                           <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
                             {busy ? (
@@ -560,6 +602,11 @@ export function ProductsTab() {
                             {!p.is_listed && (
                               <span className="shrink-0 rounded-full bg-text-dim/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-text-dim">
                                 {t("admin.products.delistedBadge")}
+                              </span>
+                            )}
+                            {p.stock_qty === 0 && (
+                              <span className="shrink-0 rounded-full bg-danger/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-danger">
+                                {t("shop.outOfStock")}
                               </span>
                             )}
                           </div>
@@ -599,17 +646,68 @@ export function ProductsTab() {
                           )}
                         </div>
 
-                        <button
-                          role="switch"
-                          aria-checked={p.in_stock}
-                          aria-label={t("admin.products.toggleStock")}
-                          title={p.in_stock ? t("admin.products.inStock") : t("shop.outOfStock")}
-                          onClick={() => toggleStock(p)}
-                          disabled={busy}
-                          className={`relative h-5 w-9 shrink-0 self-start rounded-full transition-colors ${p.in_stock ? "bg-success" : "bg-border"}`}
-                        >
-                          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${p.in_stock ? "left-[18px]" : "left-0.5"}`} />
-                        </button>
+                        <div className="flex shrink-0 flex-col items-center gap-1 self-start">
+                          <span className="text-[9px] font-semibold uppercase tracking-wide text-text-dim">{t("admin.products.ph.stock")}</span>
+                          <div
+                            className={`flex items-center rounded-lg ring-1 ${
+                              p.stock_qty === 0 ? "bg-danger/10 ring-danger/40" : "bg-bg/50 ring-border/70"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setStock(p, p.stock_qty - 1)}
+                              disabled={busy || p.stock_qty === 0}
+                              aria-label={t("admin.products.less")}
+                              className="h-7 w-6 text-sm text-text-dim hover:text-text disabled:opacity-30"
+                            >
+                              −
+                            </button>
+                            {editingStock?.id === p.id ? (
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  saveStock(p);
+                                }}
+                              >
+                                <input
+                                  autoFocus
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  step="1"
+                                  aria-label={t("admin.products.ph.stock")}
+                                  value={editingStock.value}
+                                  onChange={(e) => setEditingStock({ id: p.id, value: e.target.value })}
+                                  onBlur={() => saveStock(p)}
+                                  onKeyDown={(e) => e.key === "Escape" && setEditingStock(null)}
+                                  className="w-12 rounded bg-bg/80 py-0.5 text-center font-display text-sm font-semibold tabular-nums outline-none ring-1 ring-amber/70"
+                                />
+                              </form>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingStock({ id: p.id, value: String(p.stock_qty) })}
+                                title={t("admin.products.editStock")}
+                                aria-label={t("admin.products.stock", { count: p.stock_qty })}
+                                data-stock={p.stock_qty}
+                                className={`min-w-8 px-1 font-display text-sm font-semibold tabular-nums decoration-dashed underline-offset-4 hover:underline ${
+                                  p.stock_qty === 0 ? "text-danger" : ""
+                                }`}
+                              >
+                                {p.stock_qty}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setStock(p, p.stock_qty + 1)}
+                              disabled={busy}
+                              aria-label={t("admin.products.more")}
+                              className="h-7 w-6 text-sm text-text-dim hover:text-text disabled:opacity-30"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="mt-2.5 flex items-center gap-1.5 border-t border-border/50 pt-2.5">
@@ -639,11 +737,18 @@ export function ProductsTab() {
                           disabled={busy}
                           aria-label={confirming ? t("admin.tip.confirmDelete") : t("common.delete")}
                           title={confirming ? t("admin.tip.confirmDelete") : t("common.delete")}
-                          className={`flex h-7 items-center justify-center rounded-lg text-[11px] font-semibold transition-all ${
-                            confirming ? "bg-danger px-2 text-white" : "w-7 text-text-dim hover:bg-danger/15 hover:text-danger"
+                          className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold transition-all disabled:opacity-50 ${
+                            confirming ? "bg-danger text-white" : "bg-danger/10 text-danger ring-1 ring-danger/25 hover:bg-danger/20"
                           }`}
                         >
-                          {confirming ? t("admin.confirmQ") : <TrashIcon className="h-3.5 w-3.5" />}
+                          {confirming ? (
+                            t("admin.confirmQ")
+                          ) : (
+                            <>
+                              <TrashIcon className="h-3.5 w-3.5" />
+                              {t("common.delete")}
+                            </>
+                          )}
                         </button>
                       </div>
                     </motion.div>

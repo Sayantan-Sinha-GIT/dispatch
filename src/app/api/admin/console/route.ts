@@ -66,7 +66,6 @@ async function loadSnapshot(admin: AdminClient) {
 async function executeAction(
   admin: AdminClient,
   action: ConsoleAction,
-  adminId: string,
 ): Promise<{ ok: boolean; message: string }> {
   switch (action.kind) {
     case "create_orders": {
@@ -287,7 +286,7 @@ export async function POST(request: NextRequest) {
 
     for (const action of valid) {
       const label = describeAction(action, orderSnapshot, riderSnapshot);
-      const res = await executeAction(admin, action, user.id);
+      const res = await executeAction(admin, action);
       results.push({ label, ...res });
       const { error: auditError } = await admin.from("admin_actions").insert({
         admin_id: user.id,
@@ -328,7 +327,7 @@ export async function POST(request: NextRequest) {
   const results: { label: string; ok: boolean; message: string }[] = [];
   for (const action of immediate) {
     const label = describeAction(action, orderSnapshot, riderSnapshot);
-    const res = await executeAction(admin, action, user.id);
+    const res = await executeAction(admin, action);
     results.push({ label, ...res });
     if (action.kind !== "answer") {
       const { error: auditError } = await admin.from("admin_actions").insert({

@@ -5,6 +5,13 @@ import { runDispatchTick } from "@/lib/dispatch";
 
 const DELIVERY_FEE = 25;
 
+/** 409 with a code the cart translates, naming the item and how many are left. */
+function stockError(name: string, available: number) {
+  const error =
+    available > 0 ? `Only ${available} of ${name} left — lower the quantity` : `${name} just sold out — remove it from your cart`;
+  return NextResponse.json({ code: "out_of_stock", name, available, error }, { status: 409 });
+}
+
 export async function POST(request: NextRequest) {
   const { items, address, lat, lng } = (await request.json()) as {
     items: { productId: string; qty: number }[];
@@ -51,10 +58,13 @@ export async function POST(request: NextRequest) {
   if (delisted) {
     return NextResponse.json({ error: `${delisted.name} is no longer sold — remove it from your cart` }, { status: 400 });
   }
-  const outOfStock = products.find((p) => !p.in_stock);
-  if (outOfStock) {
-    return NextResponse.json({ error: `${outOfStock.name} just went out of stock` }, { status: 400 });
-  }
+  // A friendly early answer. The database trigger that takes the stock is the
+  // real guard: two customers checking out the last one at once can both pass
+  // this line, and only one of them gets past the trigger.
+  const wanted = new Map<string, number>();
+  for (const i of items) wanted.set(i.productId, (wanted.get(i.productId) ?? 0) + i.qty);
+  const short = products.find((p) => p.stock_qty < (wanted.get(p.id) ?? 0));
+  if (short) return stockError(short.name, short.stock_qty);
 
   const subtotal = priced.reduce((sum, p) => sum + p.price * p.qty, 0);
   const totalWeight = priced.reduce((sum, p) => sum + p.qty, 0);
@@ -79,6 +89,10 @@ export async function POST(request: NextRequest) {
     .select("*")
     .single();
 
+  if (error?.hint === "out_of_stock") {
+    const { name, available } = JSON.parse(error.details ?? "{}") as { name?: string; available?: number };
+    return stockError(name ?? "An item", available ?? 0);
+  }
   if (error || !order) {
     return NextResponse.json({ error: error?.message ?? "Could not place order" }, { status: 500 });
   }

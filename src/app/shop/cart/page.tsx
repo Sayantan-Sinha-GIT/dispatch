@@ -35,6 +35,31 @@ export default function ShopCartPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submittingRef = useRef(false);
+  const [stock, setStock] = useState<Record<string, number>>({});
+  const [stockVersion, setStockVersion] = useState(0);
+  const cartIds = cart.map((c) => c.productId).sort().join(",");
+
+  // What is actually left, so the + button stops at it and a line that asks
+  // for more than there is says so before checkout does. Delisted products
+  // come back missing and count as none left.
+  useEffect(() => {
+    if (!cartIds) return;
+    let live = true;
+    const ids = cartIds.split(",");
+    createClient()
+      .from("products")
+      .select("id, stock_qty")
+      .in("id", ids)
+      .then(({ data }) => {
+        if (!live || !data) return;
+        const left: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
+        for (const p of data) left[p.id] = p.stock_qty;
+        setStock(left);
+      });
+    return () => {
+      live = false;
+    };
+  }, [cartIds, stockVersion]);
 
   // Open the map somewhere the customer plausibly is: their last delivery
   // address first (people reorder to the same place), then the device's own
@@ -106,6 +131,14 @@ export default function ShopCartPage() {
         }),
       });
       const json = await res.json();
+      if (json.code === "out_of_stock") {
+        setStockVersion((v) => v + 1);
+        throw new Error(
+          json.available > 0
+            ? t("cart.err.outOfStock", { name: json.name, count: json.available })
+            : t("cart.err.soldOut", { name: json.name }),
+        );
+      }
       if (!res.ok) throw new Error(json.error ?? t("cart.err.placeFailed"));
       clearCart();
       router.push(`/shop/orders/${json.orderId}`);
@@ -154,13 +187,22 @@ export default function ShopCartPage() {
                 <div className="flex-grow">
                   <p className="text-sm font-medium">{item.name}</p>
                   <p className="text-xs text-text-dim">₹{item.price} {t("cart.each")}</p>
+                  {item.productId in stock && item.qty > stock[item.productId] && (
+                    <p className="mt-0.5 text-xs font-semibold text-danger">
+                      {stock[item.productId] > 0 ? t("cart.onlyLeft", { count: stock[item.productId] }) : t("cart.soldOut")}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2.5 rounded-lg bg-surface-raised px-2 py-1">
                   <button onClick={() => setQty(item.productId, item.qty - 1)} className="px-1.5 text-sm transition-transform active:scale-90">
                     −
                   </button>
                   <span className="w-4 text-center text-sm font-semibold">{item.qty}</span>
-                  <button onClick={() => setQty(item.productId, item.qty + 1)} className="px-1.5 text-sm transition-transform active:scale-90">
+                  <button
+                    onClick={() => setQty(item.productId, item.qty + 1)}
+                    disabled={item.productId in stock && item.qty >= stock[item.productId]}
+                    className="px-1.5 text-sm transition-transform active:scale-90 disabled:opacity-30"
+                  >
                     +
                   </button>
                 </div>

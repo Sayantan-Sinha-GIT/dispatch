@@ -15,6 +15,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
 import { ProductImage } from "@/components/shop/ProductImage";
 import Image from "next/image";
+import { LOW_STOCK } from "@/lib/stock";
 
 /** Lower-case slug per category, matching the delivered artwork. */
 const CATEGORY_IMAGE: Record<string, string> = {
@@ -37,19 +38,39 @@ export default function ShopCatalogPage() {
   const [query, setQuery] = useState("");
   const [viewing, setViewing] = useState<Product | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from("products")
-      .select("*")
-      .eq("is_listed", true)
-      .order("category")
-      .order("name")
-      .then(({ data }) => setProducts(data ?? []));
-    supabase.auth.getUser().then(({ data }) => setProfileId(data.user?.id ?? null));
+    let live = true;
+    const load = () =>
+      supabase
+        .from("products")
+        .select("*")
+        .eq("is_listed", true)
+        .order("category")
+        .order("name")
+        .then(({ data }) => {
+          if (!live) return;
+          setProducts(data ?? []);
+          setLoaded(true);
+        });
+    load();
+    supabase.auth.getUser().then(({ data }) => live && setProfileId(data.user?.id ?? null));
 
+    // Other people's orders take stock; show what is actually left.
+    const channel = supabase
+      .channel("shop-products")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => load())
+      .subscribe();
+    return () => {
+      live = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  // The open detail sheet follows the live row, so its stock stays current.
+  const viewingLive = viewing ? (products.find((p) => p.id === viewing.id) ?? viewing) : null;
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -66,7 +87,9 @@ export default function ShopCatalogPage() {
   );
   const count = cartCount(cart);
   const subtotal = cartSubtotal(cart);
-  const loading = products.length === 0;
+  // Waiting on the first answer, not "no products": an empty catalogue must
+  // show as empty rather than as skeletons forever.
+  const loading = !loaded;
 
   return (
     <div className="relative min-h-screen pb-28">
@@ -184,6 +207,7 @@ export default function ShopCatalogPage() {
             ))
           : filtered.map((p, i) => {
               const inCart = cart.find((c) => c.productId === p.id);
+              const atLimit = (inCart?.qty ?? 0) >= p.stock_qty;
               return (
                 <motion.button
                   key={p.id}
@@ -220,8 +244,11 @@ export default function ShopCatalogPage() {
 
                   <div className="p-3.5">
                     <p className="truncate text-sm font-semibold">{p.name}</p>
-                    <p className="mb-2.5 truncate text-xs text-text-dim">
+                    <p className="truncate text-xs text-text-dim">
                       {p.category} · {p.unit}
+                    </p>
+                    <p className={`mb-2 h-4 text-[11px] font-semibold ${p.in_stock && p.stock_qty <= LOW_STOCK ? "text-danger" : "invisible"}`}>
+                      {t("shop.onlyLeft", { count: p.stock_qty })}
                     </p>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-display text-base font-bold">₹{p.price}</span>
@@ -230,11 +257,14 @@ export default function ShopCatalogPage() {
                           role="button"
                           tabIndex={0}
                           whileTap={{ scale: 0.88 }}
+                          aria-disabled={atLimit}
                           onClick={(e) => {
                             e.stopPropagation();
-                            addToCart({ productId: p.id, name: p.name, price: p.price, unit: p.unit });
+                            addToCart({ productId: p.id, name: p.name, price: p.price, unit: p.unit }, p.stock_qty);
                           }}
-                          className="rounded-full bg-amber/15 px-3 py-1.5 text-xs font-bold text-amber transition-colors hover:bg-amber hover:text-bg"
+                          className={`rounded-full bg-amber/15 px-3 py-1.5 text-xs font-bold text-amber transition-colors ${
+                            atLimit ? "cursor-not-allowed opacity-40" : "hover:bg-amber hover:text-bg"
+                          }`}
                         >
                           {inCart ? `+ (${inCart.qty})` : t("shop.add")}
                         </motion.span>
@@ -285,7 +315,7 @@ export default function ShopCatalogPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewing && (
+        {viewingLive && (
           <motion.div
             key="product-sheet"
             initial={{ opacity: 0 }}
@@ -304,9 +334,9 @@ export default function ShopCatalogPage() {
             >
               <div className="relative aspect-[4/3] w-full">
                 <ProductImage
-                  src={viewing.image_url}
-                  gradient={viewing.image_gradient}
-                  alt={viewing.name}
+                  src={viewingLive.image_url}
+                  gradient={viewingLive.image_gradient}
+                  alt={viewingLive.name}
                   sizes="(max-width: 640px) 100vw, 480px"
                   priority
                   zoomOnHover={false}
@@ -318,7 +348,7 @@ export default function ShopCatalogPage() {
                 >
                   ✕
                 </button>
-                {!viewing.in_stock && (
+                {!viewingLive.in_stock && (
                   <span className="absolute left-3 top-3 rounded-full bg-danger px-2.5 py-1 text-[10px] font-bold uppercase text-white">
                     {t("shop.outOfStock")}
                   </span>
@@ -326,10 +356,13 @@ export default function ShopCatalogPage() {
               </div>
               <div className="p-5">
                 <p className="text-xs uppercase tracking-wide text-text-dim">
-                  {viewing.category} · {viewing.unit}
+                  {viewingLive.category} · {viewingLive.unit}
                 </p>
-                <h2 className="mt-1 font-display text-xl font-bold">{viewing.name}</h2>
-                <p className="mt-1 font-display text-lg font-bold text-amber">₹{viewing.price}</p>
+                <h2 className="mt-1 font-display text-xl font-bold">{viewingLive.name}</h2>
+                <p className="mt-1 font-display text-lg font-bold text-amber">₹{viewingLive.price}</p>
+                {viewingLive.in_stock && viewingLive.stock_qty <= LOW_STOCK && (
+                  <p className="mt-1 text-xs font-semibold text-danger">{t("shop.onlyLeft", { count: viewingLive.stock_qty })}</p>
+                )}
 
                 <div className="mt-4 rounded-xl border border-border bg-surface-raised p-3.5">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-dim">{t("shop.productDetails")}</p>
@@ -338,9 +371,12 @@ export default function ShopCatalogPage() {
 
                 <motion.button
                   whileTap={{ scale: 0.98 }}
-                  disabled={!viewing.in_stock}
+                  disabled={(cart.find((c) => c.productId === viewingLive.id)?.qty ?? 0) >= viewingLive.stock_qty}
                   onClick={() => {
-                    addToCart({ productId: viewing.id, name: viewing.name, price: viewing.price, unit: viewing.unit });
+                    addToCart(
+                      { productId: viewingLive.id, name: viewingLive.name, price: viewingLive.price, unit: viewingLive.unit },
+                      viewingLive.stock_qty,
+                    );
                     setViewing(null);
                   }}
                   className="mt-5 w-full rounded-xl bg-amber py-3 text-sm font-bold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"

@@ -324,6 +324,7 @@ export type Database = {
           is_listed: boolean
           name: string
           price: number
+          stock_qty: number
           unit: string
         }
         Insert: {
@@ -332,10 +333,10 @@ export type Database = {
           id?: string
           image_gradient?: string
           image_url?: string | null
-          in_stock?: boolean
           is_listed?: boolean
           name: string
           price: number
+          stock_qty?: number
           unit: string
         }
         Update: {
@@ -344,10 +345,10 @@ export type Database = {
           id?: string
           image_gradient?: string
           image_url?: string | null
-          in_stock?: boolean
           is_listed?: boolean
           name?: string
           price?: number
+          stock_qty?: number
           unit?: string
         }
         Relationships: []

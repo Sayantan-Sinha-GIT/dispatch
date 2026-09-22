@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
+import { isStock } from "@/lib/stock";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -26,6 +27,10 @@ export async function POST(request: NextRequest) {
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
     return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
   }
+  const stockQty = body.stock_qty ?? 0;
+  if (!isStock(stockQty)) {
+    return NextResponse.json({ error: "Quantity must be a whole number from 0 to 100000" }, { status: 400 });
+  }
 
   const { data, error } = await admin
     .from("products")
@@ -34,6 +39,7 @@ export async function POST(request: NextRequest) {
       category,
       unit,
       price,
+      stock_qty: stockQty,
       // A product can be created as a draft and listed once its photo is in.
       is_listed: body.is_listed !== false,
       image_gradient: "from-slate-700 to-slate-900",

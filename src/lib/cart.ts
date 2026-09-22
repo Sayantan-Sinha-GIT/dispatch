@@ -16,9 +16,11 @@ function save(cart: CartItem[]) {
   window.dispatchEvent(new Event("cart-updated"));
 }
 
-export function addToCart(item: Omit<CartItem, "qty">) {
+/** Adds one, unless the cart already holds all `max` that are in stock. */
+export function addToCart(item: Omit<CartItem, "qty">, max = Infinity) {
   const cart = getCart();
   const existing = cart.find((c) => c.productId === item.productId);
+  if ((existing?.qty ?? 0) >= max) return;
   if (existing) existing.qty += 1;
   else cart.push({ ...item, qty: 1 });
   save(cart);
