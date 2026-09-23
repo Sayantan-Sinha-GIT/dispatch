@@ -168,8 +168,8 @@ export function LocationPickerModal({
               className="relative -mt-6"
             >
               <svg width="36" height="46" viewBox="0 0 36 46" fill="none">
-                <path d="M18 0C8 0 0 8 0 18c0 13.5 18 28 18 28s18-14.5 18-28C36 8 28 0 18 0Z" fill="#ffb020" />
-                <circle cx="18" cy="18" r="7" fill="#0a0d12" />
+                <path d="M18 0C8 0 0 8 0 18c0 13.5 18 28 18 28s18-14.5 18-28C36 8 28 0 18 0Z" fill="#6b4ef0" />
+                <circle cx="18" cy="18" r="7" fill="#c8f34a" />
               </svg>
               <motion.div
                 className="absolute -bottom-1 left-1/2 h-2 w-6 -translate-x-1/2 rounded-full bg-black/40 blur-[2px]"
@@ -183,7 +183,7 @@ export function LocationPickerModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface/95 text-text shadow-lg backdrop-blur"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full card-soft border border-transparent bg-surface/95 text-text shadow-lg backdrop-blur"
             >
               ←
             </button>
@@ -192,10 +192,10 @@ export function LocationPickerModal({
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 placeholder={t("picker.searchPlaceholder")}
-                className="w-full rounded-full border border-border bg-surface/95 px-4 py-3 text-sm shadow-lg outline-none backdrop-blur focus:border-amber"
+                className="w-full rounded-full card-soft border border-transparent bg-surface/95 px-4 py-3 text-sm shadow-lg outline-none backdrop-blur focus:border-brand"
               />
               {searching && (
-                <span className="absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-amber border-t-transparent" />
+                <span className="absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-brand border-t-transparent" />
               )}
               <AnimatePresence>
                 {suggestions.length > 0 && (
@@ -204,7 +204,7 @@ export function LocationPickerModal({
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+                    className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl card-soft border border-transparent bg-surface shadow-2xl"
                   >
                     {suggestions.map((s, i) => (
                       <button
@@ -230,10 +230,10 @@ export function LocationPickerModal({
             type="button"
             onClick={useMyLocation}
             disabled={locating}
-            className="absolute bottom-4 right-4 z-[1000] flex items-center gap-2 rounded-full border border-amber/40 bg-surface/90 px-3.5 py-2.5 text-xs font-semibold text-amber shadow-lg backdrop-blur disabled:opacity-50"
+            className="absolute bottom-4 right-4 z-[1000] flex items-center gap-2 rounded-full border border-brand/40 bg-surface/90 px-3.5 py-2.5 text-xs font-semibold text-brand shadow-lg backdrop-blur disabled:opacity-50"
           >
             {locating ? (
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber border-t-transparent" />
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
             ) : (
               "📍"
             )}
@@ -264,7 +264,7 @@ export function LocationPickerModal({
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => onConfirm(center.lat, center.lng, addressGuess)}
-            className="w-full rounded-xl bg-amber py-3.5 text-sm font-bold text-bg shadow-lg shadow-amber/20"
+            className="w-full rounded-full bg-brand py-3.5 text-sm font-bold text-bg shadow-lg shadow-brand/20"
           >
             {t("picker.confirm")}
           </motion.button>

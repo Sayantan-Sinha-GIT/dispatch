@@ -42,7 +42,7 @@ export function DeliverConfirm({
         exit={{ y: 24, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl card-soft border border-transparent bg-surface p-6 shadow-2xl"
       >
         <h2 className="mb-1 font-display text-lg font-semibold">{t("rider.deliver.title")}</h2>
         <p className="mb-1 truncate text-xs text-text-dim">{address}</p>
@@ -55,7 +55,7 @@ export function DeliverConfirm({
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           placeholder="————"
-          className="mb-4 w-full rounded-xl border border-border bg-surface-raised px-3 py-3.5 text-center font-mono text-2xl tracking-[0.5em] outline-none transition-colors focus:border-success"
+          className="mb-4 w-full rounded-xl border border-border/50 bg-surface-raised px-3 py-3.5 text-center font-mono text-2xl tracking-[0.5em] outline-none transition-colors focus:border-success"
         />
 
         {error && (

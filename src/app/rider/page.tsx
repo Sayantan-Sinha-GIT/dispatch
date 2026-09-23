@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PortalBar, barPill } from "@/components/PortalBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
@@ -234,7 +235,7 @@ export default function RiderDashboard() {
 
   return (
     <div className="relative min-h-screen pb-10">
-      <AmbientBackground accent={isSuspended ? "amber" : isActive ? "success" : "cyan"} />
+      <AmbientBackground accent={isSuspended ? "brand" : isActive ? "success" : "zest"} />
 
       <AnimatePresence>
         {errorMsg && (
@@ -250,83 +251,83 @@ export default function RiderDashboard() {
         )}
       </AnimatePresence>
 
-      <header className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface via-surface to-cyan/10 px-5 pb-6 pt-5 backdrop-blur-sm">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan/10 blur-3xl" />
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <motion.span
-              animate={isActive ? { boxShadow: ["0 0 0 0 rgba(61,220,151,0.4)", "0 0 0 8px rgba(61,220,151,0)"] } : {}}
-              transition={{ duration: 1.8, repeat: Infinity }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan/60 font-display text-lg font-bold text-bg"
-            >
-              {(name || "R").charAt(0).toUpperCase()}
-            </motion.span>
-            <div>
-              <p className="text-xs text-text-dim">{t("rider.welcomeBack")}</p>
-              <h1 className="font-display text-xl font-semibold">{name || t("common.rider")}</h1>
+      <PortalBar>
+        <LanguageToggle className="hidden sm:flex" />
+        <ThemeToggle className="hidden sm:flex" />
+        {profileId && <NotificationBell profileId={profileId} accent="zest" />}
+        <button onClick={handleSignOut} className={barPill}>
+          {t("rider.signOut")}
+        </button>
+      </PortalBar>
+
+      {/* The rider's cockpit: an ink sheet, as in the reference's "why us"
+          block, with lime as the rider's own colour. It stays dark in both
+          themes: it is read outdoors, at a glance, often in sunlight. */}
+      <section className="mx-auto max-w-[1400px] px-2.5 pt-2.5 sm:px-4 sm:pt-4">
+        <div className="sheet-ink relative overflow-hidden px-5 pb-5 pt-7 sm:px-10 sm:pb-8 sm:pt-10">
+          <div
+            className={`pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl transition-colors duration-700 ${
+              isSuspended ? "bg-danger/25" : isActive ? "bg-lime/25" : "bg-brand/30"
+            }`}
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <motion.span
+                animate={isActive ? { boxShadow: ["0 0 0 0 rgba(200,243,74,0.45)", "0 0 0 10px rgba(200,243,74,0)"] } : {}}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-lime font-display text-2xl font-light text-ink"
+              >
+                {(name || "R").charAt(0).toUpperCase()}
+              </motion.span>
+              <div>
+                <p className="text-sm text-white/55">{t("rider.welcomeBack")}</p>
+                <h1 className="font-display text-3xl font-light tracking-[-0.04em] sm:text-5xl">{name || t("common.rider")}</h1>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle />
-            <ThemeToggle />
-            {profileId && <NotificationBell profileId={profileId} accent="cyan" />}
-            <button
-              onClick={handleSignOut}
-              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-text-dim transition-colors hover:border-cyan/50 hover:text-text"
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={toggleStatus}
+              disabled={togglingStatus || !rider}
+              role="switch"
+              aria-checked={isActive}
+              aria-label={t("rider.statusLabel")}
+              className={`flex w-full items-center gap-3 rounded-full py-1.5 pl-5 pr-1.5 transition-colors duration-500 sm:w-auto sm:min-w-[17rem] ${
+                isActive ? "bg-lime text-ink" : "bg-white/10 text-white ring-1 ring-white/15"
+              }`}
             >
-              {t("rider.signOut")}
-            </button>
+              <span className="flex flex-1 flex-col text-left">
+                <span className={`text-[11px] ${isActive ? "text-ink/60" : "text-white/50"}`}>{t("rider.statusLabel")}</span>
+                <span className="font-display text-lg font-normal leading-tight">{isActive ? t("rider.online") : t("rider.offline")}</span>
+              </span>
+              <span className={`relative h-11 w-20 rounded-full transition-colors ${isActive ? "bg-ink" : "bg-white/15"}`}>
+                <motion.span
+                  layout
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className={`absolute top-1.5 h-8 w-8 rounded-full shadow-md ${isActive ? "bg-lime" : "bg-white"}`}
+                  style={{ left: isActive ? "calc(100% - 38px)" : "6px" }}
+                />
+              </span>
+            </motion.button>
+          </div>
+
+          {isSuspended && rider?.suspended_until && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative mt-5 rounded-2xl bg-danger/15 px-4 py-3 text-sm text-[#ff9aae]"
+            >
+              {t("rider.suspendedUntil", { time: new Date(rider.suspended_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
+            </motion.div>
+          )}
+
+          <div className="relative mt-8 grid grid-cols-3 gap-2 sm:gap-3">
+            <RiderStat label={t("rider.delivered")} value={done.length} />
+            <RiderStat label={t("rider.earnings")} value={earnings} prefix="₹" decimals={0} />
+            <RiderStat label={t("rider.missedStreak")} value={rider?.consecutive_missed_offers ?? 0} warn />
           </div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative mt-5 flex items-center justify-between rounded-2xl border border-border bg-surface-raised/80 p-4 backdrop-blur"
-        >
-          <div className="flex items-center gap-2.5">
-            {isActive && <span className="h-2 w-2 animate-pulse rounded-full bg-success" />}
-            <div>
-              <p className="text-xs uppercase tracking-wide text-text-dim">{t("rider.statusLabel")}</p>
-              <p className={`font-display text-lg font-semibold ${isActive ? "text-success" : "text-text-dim"}`}>
-                {isActive ? t("rider.online") : t("rider.offline")}
-              </p>
-            </div>
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={toggleStatus}
-            disabled={togglingStatus || !rider}
-            role="switch"
-            aria-checked={isActive}
-            aria-label={t("rider.statusLabel")}
-            className={`relative h-9 w-16 rounded-full transition-colors ${isActive ? "bg-success" : "bg-border"}`}
-          >
-            <motion.span
-              layout
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="absolute top-1 h-7 w-7 rounded-full bg-white shadow-md"
-              style={{ left: isActive ? "calc(100% - 32px)" : "4px" }}
-            />
-          </motion.button>
-        </motion.div>
-
-        {isSuspended && rider?.suspended_until && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative mt-3 rounded-xl border border-danger/40 bg-danger/10 p-3 text-xs text-danger"
-          >
-            {t("rider.suspendedUntil", { time: new Date(rider.suspended_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
-          </motion.div>
-        )}
-
-        <div className="relative mt-4 grid grid-cols-3 gap-3">
-          <RiderStat label={t("rider.delivered")} value={done.length} />
-          <RiderStat label={t("rider.earnings")} value={earnings} prefix="₹" decimals={0} />
-          <RiderStat label={t("rider.missedStreak")} value={rider?.consecutive_missed_offers ?? 0} warn />
-        </div>
-      </header>
+      </section>
 
       {/* One offer at a time, front and centre — a rider glancing at this
           between stops shouldn't have to pick out of a list.
@@ -395,7 +396,7 @@ export default function RiderDashboard() {
         )}
       </div>
 
-      <main className="space-y-3 p-4">
+      <main className="mx-auto max-w-[1400px] space-y-3 px-2.5 pt-3 sm:px-4 sm:pt-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-text-dim">
             {remaining.length} {t("rider.stopsInProgress")}
@@ -412,9 +413,9 @@ export default function RiderDashboard() {
             animate={{ opacity: 1, x: 0 }}
             whileHover={{ y: -2 }}
             transition={{ delay: idx * 0.05 }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-lg shadow-black/10 transition-colors hover:border-cyan/30"
+            className="flex items-center gap-3 rounded-2xl card-soft border border-transparent bg-surface p-4 shadow-lg shadow-black/10 transition-colors hover:border-zest/30"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber/20 font-display text-sm font-semibold text-amber">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/20 font-display text-sm font-semibold text-brand">
               {(order.sequence_in_route ?? idx) + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -461,7 +462,7 @@ export default function RiderDashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center rounded-2xl border border-cyan/30 bg-cyan/5 p-10 text-center text-cyan"
+            className="flex flex-col items-center rounded-2xl border border-zest/30 bg-zest/5 p-10 text-center text-zest"
           >
             <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity }} className="mb-3 text-3xl">
               📡
@@ -504,16 +505,16 @@ function RiderStat({
   warn?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-raised/60 p-3 text-center backdrop-blur">
+    <div className="rounded-[1.4rem] bg-white/[0.06] p-3.5 ring-1 ring-white/10 sm:rounded-[1.8rem] sm:p-5">
       <span className="inline-flex items-baseline gap-0.5">
-        {prefix && <span className="text-xs text-text-dim">{prefix}</span>}
+        {prefix && <span className="text-sm text-white/50">{prefix}</span>}
         <StatCounter
           value={value}
           decimals={decimals}
-          className={`font-display text-lg font-bold ${warn && value > 0 ? "text-danger" : "text-text"}`}
+          className={`font-display text-3xl font-light tracking-[-0.04em] sm:text-5xl ${warn && value > 0 ? "text-[#ff9aae]" : "text-white"}`}
         />
       </span>
-      <p className="mt-0.5 text-[10px] uppercase tracking-wide text-text-dim">{label}</p>
+      <p className="mt-1 text-[11px] text-white/50 sm:text-xs">{label}</p>
     </div>
   );
 }

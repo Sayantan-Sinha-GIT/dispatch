@@ -14,7 +14,7 @@ type View = "all" | "listed" | "delisted" | "out";
 
 const panel = "surface-raised-soft rounded-2xl ring-1 ring-border/70";
 const field =
-  "w-full rounded-xl bg-bg/60 px-3.5 py-2.5 text-sm outline-none ring-1 ring-border/80 transition-shadow placeholder:text-text-dim/70 focus:ring-amber/70";
+  "w-full rounded-xl bg-bg/60 px-3.5 py-2.5 text-sm outline-none ring-1 ring-border/80 transition-shadow placeholder:text-text-dim/70 focus:ring-brand/70";
 
 // Mirrors the server's limits, so a bad file is refused before it uploads.
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -337,7 +337,7 @@ export function ProductsTab() {
       {/* List a new product */}
       <section className={`${panel} h-fit p-5 lg:sticky lg:top-6`}>
         <h2 className="flex items-center gap-2 font-display text-sm font-semibold">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber/15 text-amber">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/15 text-brand">
             <BoxIcon className="h-4 w-4" />
           </span>
           {t("admin.products.addTitle")}
@@ -411,10 +411,10 @@ export function ProductsTab() {
                   pickPhoto(e.dataTransfer.files?.[0]);
                 }}
                 className={`flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center transition-colors ${
-                  dragging ? "border-amber bg-amber/10" : "border-border hover:border-amber/60 hover:bg-amber/5"
+                  dragging ? "border-brand bg-brand/10" : "border-border hover:border-brand/60 hover:bg-brand/5"
                 }`}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber/15 text-amber">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/15 text-brand">
                   <ImageIcon className="h-5 w-5" />
                 </span>
                 <span className="text-xs font-semibold">{t("admin.products.dropPhoto")}</span>
@@ -484,7 +484,7 @@ export function ProductsTab() {
             />
             <span
               aria-hidden
-              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-amber ${
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand ${
                 listNow ? "bg-success" : "bg-border"
               }`}
             >
@@ -496,7 +496,7 @@ export function ProductsTab() {
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={saving}
-            className="w-full rounded-xl bg-amber py-2.5 text-sm font-bold text-bg shadow-[0_8px_24px_-10px] shadow-amber transition-opacity disabled:opacity-50"
+            className="w-full rounded-full bg-brand py-3 text-sm font-bold text-bg shadow-[0_8px_24px_-10px] shadow-brand transition-opacity disabled:opacity-50"
           >
             {saving ? (photo ? t("admin.products.uploading") : t("admin.products.adding")) : t("admin.products.addBtn")}
           </motion.button>
@@ -526,7 +526,7 @@ export function ProductsTab() {
                   {view === key && (
                     <motion.span
                       layoutId="product-view"
-                      className="absolute inset-0 rounded-full bg-amber"
+                      className="absolute inset-0 rounded-full bg-brand"
                       transition={{ type: "spring", stiffness: 420, damping: 34 }}
                     />
                   )}
@@ -535,7 +535,7 @@ export function ProductsTab() {
                 </button>
               ))}
             </div>
-            <label className="flex w-full items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-text-dim ring-1 ring-border/70 focus-within:ring-amber/60 sm:w-56">
+            <label className="flex w-full items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-text-dim ring-1 ring-border/70 focus-within:ring-brand/60 sm:w-56">
               <SearchIcon className="h-3.5 w-3.5 shrink-0" />
               <input
                 value={query}
@@ -569,7 +569,7 @@ export function ProductsTab() {
                       data-product={p.name}
                       className={`group relative rounded-xl p-2.5 ring-1 transition-colors ${
                         p.is_listed ? "bg-surface-raised/60" : "bg-surface-raised/25"
-                      } ${justAdded === p.id ? "ring-amber/60" : "ring-border/60 hover:ring-border"}`}
+                      } ${justAdded === p.id ? "ring-brand/60" : "ring-border/60 hover:ring-border"}`}
                     >
                       <div className="flex items-center gap-3">
                         <button
@@ -631,7 +631,7 @@ export function ProductsTab() {
                                 onChange={(e) => setEditingPrice({ id: p.id, value: e.target.value })}
                                 onBlur={() => savePrice(p)}
                                 onKeyDown={(e) => e.key === "Escape" && setEditingPrice(null)}
-                                className="w-20 rounded-md bg-bg/70 px-1.5 py-0.5 font-display text-sm font-semibold tabular-nums outline-none ring-1 ring-amber/70"
+                                className="w-20 rounded-md bg-bg/70 px-1.5 py-0.5 font-display text-sm font-semibold tabular-nums outline-none ring-1 ring-brand/70"
                               />
                             </form>
                           ) : (
@@ -639,7 +639,7 @@ export function ProductsTab() {
                               type="button"
                               onClick={() => setEditingPrice({ id: p.id, value: String(Number(p.price)) })}
                               title={t("admin.products.editPrice")}
-                              className="mt-1 rounded-md font-display text-sm font-semibold tabular-nums decoration-amber/60 decoration-dashed underline-offset-4 hover:underline"
+                              className="mt-1 rounded-md font-display text-sm font-semibold tabular-nums decoration-brand/60 decoration-dashed underline-offset-4 hover:underline"
                             >
                               ₹{Number(p.price).toFixed(0)}
                             </button>
@@ -680,7 +680,7 @@ export function ProductsTab() {
                                   onChange={(e) => setEditingStock({ id: p.id, value: e.target.value })}
                                   onBlur={() => saveStock(p)}
                                   onKeyDown={(e) => e.key === "Escape" && setEditingStock(null)}
-                                  className="w-12 rounded bg-bg/80 py-0.5 text-center font-display text-sm font-semibold tabular-nums outline-none ring-1 ring-amber/70"
+                                  className="w-12 rounded bg-bg/80 py-0.5 text-center font-display text-sm font-semibold tabular-nums outline-none ring-1 ring-brand/70"
                                 />
                               </form>
                             ) : (

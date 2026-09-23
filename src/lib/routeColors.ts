@@ -1,1 +1,1 @@
-export const ROUTE_COLORS = ["#ffb020", "#2dd4c4", "#ff5470", "#8b7bff", "#3ddc97", "#ff8fa3"];
+export const ROUTE_COLORS = ["#6b4ef0", "#86c400", "#ff5d7a", "#3b82f6", "#17a567", "#f59e0b"];

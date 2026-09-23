@@ -23,7 +23,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       whileTap={{ scale: 0.9 }}
       onClick={toggle}
       aria-label={t("a11y.toggleTheme")}
-      className={`flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-raised text-text-dim transition-colors hover:text-text ${className}`}
+      className={`flex h-9 w-9 items-center justify-center rounded-full bg-surface/80 text-text-dim ring-1 ring-border backdrop-blur transition-colors hover:text-text ${className}`}
     >
       {theme === "dark" ? (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

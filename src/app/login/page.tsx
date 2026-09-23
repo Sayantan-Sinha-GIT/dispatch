@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { AuthBackground } from "@/components/AuthBackground";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { EyeIcon, EyeOffIcon } from "@/components/Icons";
 import { VerifyCodeForm } from "@/components/auth/VerifyCodeForm";
@@ -95,10 +93,10 @@ function UnifiedLogin() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const ROLE_META: Record<Role, { label: string; tagline: string; accent: "amber" | "cyan" }> = {
-    customer: { label: t("login.tab.customer"), tagline: t("login.tagline.customer"), accent: "amber" },
-    rider: { label: t("login.tab.rider"), tagline: t("login.tagline.rider"), accent: "cyan" },
-    admin: { label: t("login.tab.admin"), tagline: t("login.tagline.admin"), accent: "amber" },
+  const ROLE_META: Record<Role, { label: string; tagline: string; accent: "brand" | "zest" }> = {
+    customer: { label: t("login.tab.customer"), tagline: t("login.tagline.customer"), accent: "brand" },
+    rider: { label: t("login.tab.rider"), tagline: t("login.tagline.rider"), accent: "zest" },
+    admin: { label: t("login.tab.admin"), tagline: t("login.tagline.admin"), accent: "brand" },
   };
 
   const meta = ROLE_META[role];
@@ -362,41 +360,18 @@ function UnifiedLogin() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <AuthBackground accent={meta.accent} />
+    <AuthShell role={role} headline={t(`roles.${role}.title`)} sub={t(`roles.${role}.desc`)}>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}>
+        <h2 className="font-display text-3xl font-light tracking-[-0.03em]">{t("nav.signIn")}</h2>
+        <p className="mb-7 mt-1.5 text-sm text-text-dim">{meta.tagline}</p>
 
-      <div className="absolute right-4 top-4 z-10 flex gap-2">
-        <LanguageToggle />
-        <ThemeToggle />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative w-full max-w-sm rounded-2xl border border-border bg-surface/90 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl"
-      >
-        <Link href="/" className="mb-8 flex items-center gap-2.5">
-          <span
-            className={`flex h-9 w-9 items-center justify-center rounded-lg font-display font-bold text-bg ${
-              meta.accent === "amber" ? "bg-amber" : "bg-cyan"
-            }`}
-          >
-            D
-          </span>
-          <div>
-            <h1 className="font-display text-lg font-semibold leading-none">Dispatch</h1>
-            <p className="text-xs text-text-dim">{meta.tagline}</p>
-          </div>
-        </Link>
-
-        <div className="mb-6 grid grid-cols-3 gap-1.5 rounded-xl border border-border bg-surface-raised p-1">
+        <div className="mb-6 grid grid-cols-3 gap-1 rounded-full bg-surface-raised p-1">
           {(["customer", "rider", "admin"] as Role[]).map((r) => (
             <button
               key={r}
               onClick={() => switchRole(r)}
-              className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                role === r ? (r === "admin" || r === "customer" ? "bg-amber text-bg" : "bg-cyan text-bg") : "text-text-dim hover:text-text"
+              className={`rounded-full py-2 text-xs font-medium transition-colors ${
+                role === r ? (r === "admin" || r === "customer" ? "bg-brand text-bg" : "bg-lime text-ink") : "text-text-dim hover:text-text"
               }`}
             >
               {ROLE_META[r].label}
@@ -420,7 +395,7 @@ function UnifiedLogin() {
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => switchRole(wrongRoleActual as Role)}
-              className="mt-2 w-full rounded-lg border border-amber/40 bg-amber/10 py-2 text-xs font-semibold text-amber transition-colors hover:bg-amber/20"
+              className="mt-2 w-full rounded-lg border border-brand/40 bg-brand/10 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand/20"
             >
               {t("login.switchTo", { actual: t(`login.role.${wrongRoleActual}`) })}
             </motion.button>
@@ -499,26 +474,26 @@ function UnifiedLogin() {
                 type="button"
                 onClick={handleGoogle}
                 disabled={googleLoading}
-                className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="mb-3 flex w-full items-center justify-center gap-2.5 rounded-full bg-white py-3 text-sm font-medium text-neutral-800 ring-1 ring-black/10 transition-shadow hover:shadow-md disabled:opacity-50"
               >
                 <GoogleIcon />
                 {googleLoading ? t("login.redirecting") : t("login.google")}
               </motion.button>
               {!emailOpen ? (
-                <EmailGateButton onClick={() => { setEmailOpen(true); resetFeedback(); }} accent="amber" />
+                <EmailGateButton onClick={() => { setEmailOpen(true); resetFeedback(); }} accent="brand" />
               ) : (
                 <>
               <Divider label={t("login.orEmail")} />
               <form onSubmit={handleSignIn("customer", "/shop")} className="space-y-4">
-                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-                <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="amber" />
-                <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
-                <ForgotLink onClick={openRecovery} accent="amber" />
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="brand" />
+                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="brand" />
+                <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="brand" />
+                <SubmitButton loading={loading} accent="brand" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                <ForgotLink onClick={openRecovery} accent="brand" />
               </form>
               <p className="mt-4 text-center text-xs text-text-dim">
                 {t("login.newHere")}{" "}
-                <button type="button" onClick={() => { setCustomerMode("signup"); resetFeedback(); }} className="text-amber hover:underline">
+                <button type="button" onClick={() => { setCustomerMode("signup"); resetFeedback(); }} className="text-brand hover:underline">
                   {t("login.createAccount")}
                 </button>
               </p>
@@ -530,16 +505,16 @@ function UnifiedLogin() {
           {recovery === "off" && role === "customer" && customerMode === "signup" && (
             <>
               <form onSubmit={handleCustomerSignUp} className="space-y-4">
-                <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="amber" />
-                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="amber" />
-                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
+                <FormField label={t("login.name")} type="text" value={name} onChange={setName} placeholder={t("login.ph.name")} accent="brand" />
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="brand" />
+                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="brand" />
                 <p className="text-[11px] text-text-dim">{t("login.passwordHint")}</p>
                 <p className="text-[11px] text-text-dim">{t("login.verifyNotice")}</p>
-                <SubmitButton loading={loading} accent="amber" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
+                <SubmitButton loading={loading} accent="brand" label={t("login.createAccount")} loadingLabel={t("login.creating")} />
               </form>
               <p className="mt-4 text-center text-xs text-text-dim">
                 {t("login.haveAccount")}{" "}
-                <button type="button" onClick={() => { setCustomerMode("signin"); resetFeedback(); }} className="text-amber hover:underline">
+                <button type="button" onClick={() => { setCustomerMode("signin"); resetFeedback(); }} className="text-brand hover:underline">
                   {t("login.signIn")}
                 </button>
               </p>
@@ -553,26 +528,26 @@ function UnifiedLogin() {
                 type="button"
                 onClick={handleGoogle}
                 disabled={googleLoading}
-                className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg bg-white py-2.5 text-sm font-semibold text-neutral-800 transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="mb-3 flex w-full items-center justify-center gap-2.5 rounded-full bg-white py-3 text-sm font-medium text-neutral-800 ring-1 ring-black/10 transition-shadow hover:shadow-md disabled:opacity-50"
               >
                 <GoogleIcon />
                 {googleLoading ? t("login.redirecting") : t("login.google")}
               </motion.button>
               {!emailOpen ? (
-                <EmailGateButton onClick={() => { setEmailOpen(true); resetFeedback(); }} accent="cyan" />
+                <EmailGateButton onClick={() => { setEmailOpen(true); resetFeedback(); }} accent="zest" />
               ) : (
                 <>
               <Divider label={t("login.orEmail")} />
               <form onSubmit={handleSignIn("rider", "/rider")} className="space-y-4">
-                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="cyan" />
-                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="cyan" />
-                <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="cyan" />
-                <SubmitButton loading={loading} accent="cyan" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
-                <ForgotLink onClick={openRecovery} accent="cyan" />
+                <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.email")} accent="zest" />
+                <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="zest" />
+                <ResendRow show={needsVerification} state={resendState} onResend={handleResend} accent="zest" />
+                <SubmitButton loading={loading} accent="zest" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+                <ForgotLink onClick={openRecovery} accent="zest" />
               </form>
               <p className="mt-4 text-center text-xs text-text-dim">
                 {t("login.newRider")}{" "}
-                <Link href="/rider/signup" className="text-cyan hover:underline">
+                <Link href="/rider/signup" className="text-zest hover:underline">
                   {t("login.signUp")}
                 </Link>
               </p>
@@ -583,25 +558,25 @@ function UnifiedLogin() {
 
           {recovery === "off" && role === "admin" && (
             <form onSubmit={handleSignIn("admin", "/admin")} className="space-y-4">
-              <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="amber" />
-              <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="amber" />
-              <SubmitButton loading={loading} accent="amber" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
-              <ForgotLink onClick={openRecovery} accent="amber" />
+              <FormField label={t("login.email")} type="email" value={email} onChange={setEmail} placeholder={t("login.ph.adminEmail")} accent="brand" />
+              <FormField label={t("login.password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" accent="brand" />
+              <SubmitButton loading={loading} accent="brand" label={t("login.signIn")} loadingLabel={t("login.signingIn")} />
+              <ForgotLink onClick={openRecovery} accent="brand" />
             </form>
           )}
         </motion.div>
       </motion.div>
-    </div>
+    </AuthShell>
   );
 }
 
-function ForgotLink({ onClick, accent }: { onClick: () => void; accent: "amber" | "cyan" }) {
+function ForgotLink({ onClick, accent }: { onClick: () => void; accent: "brand" | "zest" }) {
   const { t } = useLanguage();
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-center text-xs hover:underline ${accent === "amber" ? "text-amber" : "text-cyan"}`}
+      className={`w-full text-center text-xs hover:underline ${accent === "brand" ? "text-brand" : "text-zest"}`}
     >
       {t("login.forgot")}
     </button>
@@ -621,7 +596,7 @@ function ForgotForm({
   onSubmit: (e: React.FormEvent) => void;
   onBack: () => void;
   loading: boolean;
-  accent: "amber" | "cyan";
+  accent: "brand" | "zest";
 }) {
   const { t } = useLanguage();
   return (
@@ -678,7 +653,7 @@ function ForgotCodeForm({
   onBack: () => void;
   loading: boolean;
   error: string | null;
-  accent: "amber" | "cyan";
+  accent: "brand" | "zest";
 }) {
   const { t } = useLanguage();
   return (
@@ -723,7 +698,7 @@ function ForgotCodeForm({
       <button
         type="button"
         onClick={onResend}
-        className={`mt-2 w-full text-center text-xs hover:underline ${accent === "amber" ? "text-amber" : "text-cyan"}`}
+        className={`mt-2 w-full text-center text-xs hover:underline ${accent === "brand" ? "text-brand" : "text-zest"}`}
       >
         {t("login.resendCode")}
       </button>
@@ -734,17 +709,15 @@ function ForgotCodeForm({
   );
 }
 
-function EmailGateButton({ onClick, accent }: { onClick: () => void; accent: "amber" | "cyan" }) {
+function EmailGateButton({ onClick, accent }: { onClick: () => void; accent: "brand" | "zest" }) {
   const { t } = useLanguage();
   return (
     <motion.button
       whileTap={{ scale: 0.98 }}
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center justify-center gap-2.5 rounded-lg border py-2.5 text-sm font-semibold transition-colors ${
-        accent === "amber"
-          ? "border-amber/40 text-amber hover:bg-amber/10"
-          : "border-cyan/40 text-cyan hover:bg-cyan/10"
+      className={`flex w-full items-center justify-center gap-2.5 rounded-full py-3 text-sm font-medium transition-colors ${
+        accent === "brand" ? "bg-brand/10 text-brand hover:bg-brand/15" : "bg-lime/25 text-ink hover:bg-lime/40 dark:text-lime"
       }`}
     >
       <MailIcon />
@@ -771,7 +744,7 @@ function ResendRow({
   show: boolean;
   state: "idle" | "sending" | "sent";
   onResend: () => void;
-  accent: "amber" | "cyan";
+  accent: "brand" | "zest";
 }) {
   const { t } = useLanguage();
   if (!show) return null;
@@ -781,7 +754,7 @@ function ResendRow({
       onClick={onResend}
       disabled={state !== "idle"}
       className={`w-full text-center text-xs hover:underline disabled:opacity-60 ${
-        accent === "amber" ? "text-amber" : "text-cyan"
+        accent === "brand" ? "text-brand" : "text-zest"
       }`}
     >
       {state === "sending" ? t("login.resending") : state === "sent" ? t("login.resent") : t("login.resend")}
@@ -812,7 +785,7 @@ function FormField({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  accent: "amber" | "cyan";
+  accent: "brand" | "zest";
 }) {
   const { t } = useLanguage();
   const [revealed, setRevealed] = useState(false);
@@ -820,7 +793,7 @@ function FormField({
 
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-dim">{label}</label>
+      <label className="mb-1.5 block text-xs font-medium text-text-dim">{label}</label>
       <div className="relative">
         <input
           type={isPassword && revealed ? "text" : type}
@@ -828,9 +801,9 @@ function FormField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full rounded-lg border border-border bg-surface-raised py-2.5 pl-3.5 text-sm outline-none transition-colors ${
+          className={`w-full rounded-2xl border border-transparent bg-surface-raised py-3 pl-4 text-sm outline-none transition-colors ${
             isPassword ? "pr-11" : "pr-3.5"
-          } ${accent === "amber" ? "focus:border-amber" : "focus:border-cyan"}`}
+          } ${accent === "brand" ? "focus:border-brand" : "focus:border-zest"}`}
         />
         {isPassword && (
           <button
@@ -881,7 +854,7 @@ function SubmitButton({
   disabled,
 }: {
   loading: boolean;
-  accent: "amber" | "cyan";
+  accent: "brand" | "zest";
   label: string;
   loadingLabel: string;
   disabled?: boolean;
@@ -891,8 +864,8 @@ function SubmitButton({
       whileTap={{ scale: 0.98 }}
       type="submit"
       disabled={loading || disabled}
-      className={`w-full rounded-lg py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50 ${
-        accent === "amber" ? "bg-amber" : "bg-cyan"
+      className={`w-full rounded-full py-3 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 ${
+        accent === "brand" ? "bg-brand text-white" : "bg-lime text-ink"
       }`}
     >
       {loading ? loadingLabel : label}

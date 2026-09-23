@@ -1,35 +1,55 @@
 @import "tailwindcss";
 
-:root {
-  --bg: #0a0d12;
-  --surface: #12161d;
-  --surface-raised: #181d26;
-  --border: #262d38;
-  --text: #e8ecf1;
-  --text-dim: #8b96a5;
-  --amber: #ffb020;
-  --amber-dim: #7a5416;
-  --cyan: #2dd4c4;
-  --danger: #ff5470;
-  --success: #3ddc97;
+/* `dark:` follows the app's own theme switch, not the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-  --font-display: var(--font-space-grotesk);
-  --font-body: var(--font-manrope);
+/* ---------------------------------------------------------------------------
+   Palette, v4: "lavender field".
+
+   Light is the default look: a pale lavender page, white sheets that float on
+   it, one violet for everything the eye should go to, and lime used only as a
+   small signal (a dot, a live marker), never as text on white. Dark is the
+   same system at night: violet-black ground, lifted violet, lime for signals.
+
+   `brand` is the violet, `zest` the lime. `zest` darkens to an olive in the
+   light theme so that where it is used as text it still reads on white.
+--------------------------------------------------------------------------- */
+:root {
+  --bg: #0d0b14;
+  --surface: #16131f;
+  --surface-raised: #1e1a2a;
+  --border: #2c2739;
+  --text: #f1eff8;
+  --text-dim: #9d97af;
+  --brand: #a996ff;
+  --brand-dim: #3a3163;
+  --zest: #c8f34a;
+  --lime: #c8f34a;
+  --ink: #0c0a12;
+  --danger: #ff6b86;
+  --success: #45dca0;
+  --wash: #221b3d;
+
+  --font-display: var(--font-onest);
+  --font-body: var(--font-onest);
   --font-mono: var(--font-jetbrains-mono);
 }
 
 :root[data-theme="light"] {
-  --bg: #f6f7f9;
+  --bg: #f2f0f8;
   --surface: #ffffff;
-  --surface-raised: #eef0f4;
-  --border: #dde1e8;
-  --text: #14171f;
-  --text-dim: #5b6472;
-  --amber: #c97b0a;
-  --amber-dim: #f0d9ae;
-  --cyan: #0f8f82;
-  --danger: #d92d4f;
-  --success: #1a8f63;
+  --surface-raised: #f5f3fb;
+  --border: #e6e2f1;
+  --text: #16141f;
+  --text-dim: #6c6780;
+  --brand: #6b4ef0;
+  --brand-dim: #e4ddff;
+  --zest: #4f7a0c;
+  --lime: #c8f34a;
+  --ink: #111018;
+  --danger: #d52d52;
+  --success: #17864f;
+  --wash: #e3dcff;
 }
 
 @theme inline {
@@ -39,14 +59,29 @@
   --color-border: var(--border);
   --color-text: var(--text);
   --color-text-dim: var(--text-dim);
-  --color-amber: var(--amber);
-  --color-amber-dim: var(--amber-dim);
-  --color-cyan: var(--cyan);
+  --color-brand: var(--brand);
+  --color-brand-dim: var(--brand-dim);
+  --color-zest: var(--zest);
+  --color-lime: var(--lime);
+  --color-ink: var(--ink);
+  --color-wash: var(--wash);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --font-display: var(--font-display);
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
+}
+
+/* Softer geometry everywhere at once. Every rounded-* in the app reads from
+   this scale, so raising it turns the whole interface from boxes into sheets
+   without touching a single component. */
+@theme {
+  --radius-md: 0.7rem;
+  --radius-lg: 0.95rem;
+  --radius-xl: 1.2rem;
+  --radius-2xl: 1.6rem;
+  --radius-3xl: 2.1rem;
+  --radius-4xl: 2.6rem;
 }
 
 body {
@@ -57,11 +92,12 @@ body {
 
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 ::selection {
-  background: var(--amber);
-  color: var(--bg);
+  background: var(--brand);
+  color: #fff;
 }
 
 body {
@@ -84,6 +120,11 @@ body {
    the desaturation keeps the map quieter than the routes drawn on top.
    Only the tile pane is filtered, so markers and route lines keep their
    true colours. */
+/* Day basemap: the stock tiles are loud; quietened so routes read first. */
+:root[data-theme="light"] .leaflet-tile-pane {
+  filter: saturate(0.45) contrast(0.96) brightness(1.03);
+}
+
 :root:not([data-theme="light"]) .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.55);
 }
@@ -129,8 +170,7 @@ body {
 
 /* Light mode needs far less - grain over a pale surface reads as dirt. */
 :root[data-theme="light"] .grain::after {
-  opacity: 0.05;
-  mix-blend-mode: multiply;
+  display: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -141,17 +181,91 @@ body {
    page. These give surfaces a light edge and a grounded shadow instead.
 --------------------------------------------------------------------------- */
 .surface-raised-soft {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 96%, white 4%), var(--surface));
+  background: var(--surface);
   box-shadow:
-    0 1px 0 0 color-mix(in srgb, white 7%, transparent) inset,
-    0 18px 40px -24px rgb(0 0 0 / 0.85);
+    0 1px 0 0 color-mix(in srgb, white 6%, transparent) inset,
+    0 24px 60px -34px rgb(0 0 0 / 0.9);
 }
 
 :root[data-theme="light"] .surface-raised-soft {
-  background: linear-gradient(160deg, #ffffff, color-mix(in srgb, var(--surface) 94%, var(--text) 6%));
+  background: var(--surface);
   box-shadow:
-    0 1px 0 0 rgb(255 255 255 / 0.9) inset,
-    0 14px 32px -22px rgb(15 23 42 / 0.35);
+    0 1px 2px rgb(40 24 110 / 0.04),
+    0 22px 50px -30px rgb(60 36 160 / 0.28);
+}
+
+/* ---------------------------------------------------------------------------
+   Sheets and pills, the two shapes the redesign is built from.
+
+   A sheet is a large, very rounded panel floating on the page with no border
+   at all: separation comes from the shadow and the colour of what is behind
+   it. A pill is every button and chip. `.sheet-ink` is the black sheet the
+   inspiration uses for its "why us" and footer blocks; `.sheet-wash` the
+   lavender one.
+--------------------------------------------------------------------------- */
+.sheet {
+  background: var(--surface);
+  border-radius: var(--radius-4xl);
+  box-shadow:
+    0 1px 2px rgb(40 24 110 / 0.04),
+    0 30px 80px -40px rgb(60 36 160 / 0.32);
+}
+:root:not([data-theme="light"]) .sheet {
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.05) inset, 0 30px 80px -40px rgb(0 0 0 / 0.9);
+}
+
+.sheet-ink {
+  background: var(--ink);
+  color: #f1eff8;
+  border-radius: var(--radius-4xl);
+  box-shadow: 0 40px 90px -40px rgb(20 10 60 / 0.55);
+}
+:root:not([data-theme="light"]) .sheet-ink {
+  background: #07060b;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 40px 90px -40px rgb(0 0 0 / 0.9);
+}
+
+.sheet-wash {
+  border-radius: var(--radius-4xl);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 60%),
+    radial-gradient(120% 90% at 100% 100%, color-mix(in srgb, #8fb4ff 26%, transparent), transparent 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--wash) 92%, white 8%), var(--wash));
+}
+
+/* Frosted glass, for headers and anything laid over a photograph. */
+.glass {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* The accent dot inside a pill button: the inspiration's lime bullet. */
+.cta-dot {
+  display: inline-flex;
+  height: 1.6rem;
+  width: 1.6rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--lime);
+  color: #111018;
+}
+
+/* Photographs are dark night scenes; on the lavender system they are toned
+   violet so they belong to the palette instead of fighting it. */
+.photo-tone {
+  position: relative;
+  isolation: isolate;
+}
+.photo-tone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(160deg, rgb(150 120 255 / 0.55), rgb(80 50 190 / 0.35) 55%, rgb(20 12 50 / 0.2));
+  mix-blend-mode: soft-light;
 }
 
 /* A hairline that fades, rather than a hard rule across the full width. */
@@ -186,4 +300,41 @@ body {
   .grain::after {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   The lavender field: the one backdrop every screen sits on. Large, very soft
+   colour fields that drift slowly, like the blurred landscape behind the
+   reference sites' sheets, with none of a photograph's weight.
+--------------------------------------------------------------------------- */
+@keyframes field-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) scale(1.06); }
+}
+.field-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  animation: field-drift 22s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-blob { animation: none; }
+}
+
+@keyframes marquee {
+  to { transform: translateX(-33.3333%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[marquee"] { animation: none !important; }
+}
+
+/* A card without a border: separated from the page by a soft violet shadow
+   in the light theme, and by a hairline of light in the dark one. */
+.card-soft {
+  box-shadow:
+    0 1px 2px rgb(40 24 110 / 0.04),
+    0 20px 46px -32px rgb(60 36 160 / 0.4);
+}
+:root:not([data-theme="light"]) .card-soft {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 20px 46px -30px rgb(0 0 0 / 0.8);
 }

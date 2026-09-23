@@ -93,7 +93,7 @@ export function SupportTab() {
     <div className="mx-auto max-w-4xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber/15 text-amber">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand">
             <LifebuoyIcon className="h-4 w-4" />
           </span>
           {t("admin.support.title")}
@@ -116,7 +116,7 @@ export function SupportTab() {
               {filter === key && (
                 <motion.span
                   layoutId="support-filter"
-                  className="absolute inset-0 rounded-full bg-amber"
+                  className="absolute inset-0 rounded-full bg-brand"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               )}
@@ -151,7 +151,7 @@ export function SupportTab() {
             className={`${panel} relative overflow-hidden p-5`}
           >
             {/* Open tickets carry an accent edge so they stand out in the "All" view. */}
-            <span className={`absolute inset-y-0 left-0 w-1 ${open ? "bg-amber" : "bg-success/60"}`} />
+            <span className={`absolute inset-y-0 left-0 w-1 ${open ? "bg-brand" : "bg-success/60"}`} />
 
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -165,7 +165,7 @@ export function SupportTab() {
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                  open ? "bg-amber/15 text-amber" : "bg-success/15 text-success"
+                  open ? "bg-brand/15 text-brand" : "bg-success/15 text-success"
                 }`}
               >
                 {open ? t("admin.support.open") : t("admin.support.resolved")}
@@ -185,7 +185,7 @@ export function SupportTab() {
 
             {open && (
               <div className="mt-3">
-                <div className="rounded-xl bg-bg/50 ring-1 ring-border/70 transition-shadow focus-within:ring-amber/60">
+                <div className="rounded-xl bg-bg/50 ring-1 ring-border/70 transition-shadow focus-within:ring-brand/60">
                   <textarea
                     rows={2}
                     value={replies[ticket.id] ?? ""}

@@ -182,7 +182,7 @@ export function UsersTab() {
                 {view === key && (
                   <motion.span
                     layoutId="users-view"
-                    className="absolute inset-0 rounded-full bg-amber"
+                    className="absolute inset-0 rounded-full bg-brand"
                     transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   />
                 )}
@@ -190,7 +190,7 @@ export function UsersTab() {
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-text-dim ring-1 ring-border/70 focus-within:ring-amber/60 sm:w-64">
+          <label className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-text-dim ring-1 ring-border/70 focus-within:ring-brand/60 sm:w-64">
             <SearchIcon className="h-3.5 w-3.5 shrink-0" />
             <input
               value={query}

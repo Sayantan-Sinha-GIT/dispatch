@@ -35,18 +35,18 @@ export function VerifyCodeForm({
   loading: boolean;
   resendState: "idle" | "sending" | "sent";
   error: string | null;
-  accent: "amber" | "cyan";
+  accent: "brand" | "zest";
 }) {
   const { t } = useLanguage();
-  const accentText = accent === "amber" ? "text-amber" : "text-cyan";
-  const accentBg = accent === "amber" ? "bg-amber" : "bg-cyan";
-  const accentFocus = accent === "amber" ? "focus:border-amber" : "focus:border-cyan";
+  const accentText = accent === "brand" ? "text-brand" : "text-zest";
+  const accentBg = accent === "brand" ? "bg-brand" : "bg-zest";
+  const accentFocus = accent === "brand" ? "focus:border-brand" : "focus:border-zest";
 
   return (
     <div>
       <div
         className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full text-xl ${
-          accent === "amber" ? "bg-amber/15" : "bg-cyan/15"
+          accent === "brand" ? "bg-brand/15" : "bg-zest/15"
         }`}
       >
         ✉️
@@ -70,7 +70,7 @@ export function VerifyCodeForm({
             autoComplete="one-time-code"
             inputMode="numeric"
             placeholder={t("login.ph.resetCode")}
-            className={`w-full rounded-lg border border-border bg-surface-raised px-3 py-2.5 text-center text-lg tracking-[0.3em] outline-none transition-colors ${accentFocus}`}
+            className={`w-full rounded-lg border border-border/50 bg-surface-raised px-3 py-2.5 text-center text-lg tracking-[0.3em] outline-none transition-colors ${accentFocus}`}
           />
         </div>
 
@@ -82,7 +82,7 @@ export function VerifyCodeForm({
           whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={loading}
-          className={`w-full rounded-lg py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50 ${accentBg}`}
+          className={`w-full rounded-full py-3 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50 ${accentBg}`}
         >
           {loading ? t("login.verifying") : t("login.verifyCodeSubmit")}
         </motion.button>

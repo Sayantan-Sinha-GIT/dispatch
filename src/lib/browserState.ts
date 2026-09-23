@@ -88,5 +88,5 @@ function subscribeTheme(onChange: () => void) {
 }
 
 export function useThemeName(): "dark" | "light" {
-  return useSyncExternalStore(subscribeTheme, themeSnapshot, () => "dark");
+  return useSyncExternalStore(subscribeTheme, themeSnapshot, () => "light");
 }

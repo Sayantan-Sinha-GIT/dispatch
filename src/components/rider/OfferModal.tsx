@@ -67,19 +67,19 @@ export function OfferModal({
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 24, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
         transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="relative w-full max-w-md overflow-hidden rounded-t-3xl border-2 border-amber bg-surface shadow-2xl shadow-amber/20 sm:rounded-3xl"
+        className="relative w-full max-w-md overflow-hidden rounded-t-3xl border-2 border-brand bg-surface shadow-2xl shadow-brand/20 sm:rounded-3xl"
       >
         {/* pulsing accent rail */}
         <motion.div
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 1.8, repeat: Infinity }}
-          className="h-1 w-full bg-gradient-to-r from-amber via-amber/40 to-amber"
+          className="h-1 w-full bg-gradient-to-r from-brand via-brand/40 to-brand"
         />
 
         <div className="p-5 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-amber">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-brand">
                 {t("rider.offer.title")}
               </p>
               {queuedCount > 0 && (
@@ -94,7 +94,7 @@ export function OfferModal({
                   cx="38"
                   cy="38"
                   r={radius}
-                  stroke={urgent ? "var(--danger)" : "var(--amber)"}
+                  stroke={urgent ? "var(--danger)" : "var(--brand)"}
                   strokeWidth="5"
                   fill="none"
                   strokeDasharray={circumference}
@@ -105,7 +105,7 @@ export function OfferModal({
               <motion.span
                 animate={urgent ? { scale: [1, 1.12, 1] } : {}}
                 transition={{ duration: 1, repeat: Infinity }}
-                className={`absolute font-mono text-sm font-bold ${urgent ? "text-danger" : "text-amber"}`}
+                className={`absolute font-mono text-sm font-bold ${urgent ? "text-danger" : "text-brand"}`}
               >
                 {timeLabel}
               </motion.span>
@@ -129,12 +129,12 @@ export function OfferModal({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.12 }}
-              className="rounded-2xl border border-cyan/40 bg-cyan/10 p-3.5"
+              className="rounded-2xl border border-zest/40 bg-zest/10 p-3.5"
             >
               <p className="text-[10px] uppercase tracking-wide text-text-dim">
                 {t("rider.offer.distance")}
               </p>
-              <p className="font-display text-3xl font-bold text-cyan">
+              <p className="font-display text-3xl font-bold text-zest">
                 {distanceKm}
                 <span className="ml-1 text-base font-semibold">{t("common.km")}</span>
               </p>
@@ -193,7 +193,7 @@ export function OfferModal({
             whileTap={{ scale: 0.97 }}
             onClick={onDecline}
             disabled={busy}
-            className="flex-1 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm font-semibold text-text-dim transition-colors hover:border-danger/50 hover:text-danger disabled:opacity-50"
+            className="flex-1 rounded-xl card-soft border border-transparent bg-surface px-4 py-3.5 text-sm font-semibold text-text-dim transition-colors hover:border-danger/50 hover:text-danger disabled:opacity-50"
           >
             {declining ? t("rider.offer.declining") : t("rider.offer.decline")}
           </motion.button>
@@ -201,7 +201,7 @@ export function OfferModal({
             whileTap={{ scale: 0.97 }}
             onClick={onAccept}
             disabled={busy}
-            className="flex-[2] rounded-xl bg-amber px-4 py-3.5 font-display text-base font-bold text-bg shadow-lg shadow-amber/25 disabled:opacity-60"
+            className="flex-[2] rounded-xl bg-brand px-4 py-3.5 font-display text-base font-bold text-bg shadow-lg shadow-brand/25 disabled:opacity-60"
           >
             {accepting ? t("rider.offer.accepting") : `${t("rider.offer.accept")} · ₹${payout}`}
           </motion.button>

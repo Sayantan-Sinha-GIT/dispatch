@@ -84,12 +84,12 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
           {tickets.map((tk) => {
             const open = tk.status === "open";
             return (
-              <div key={tk.id} className="rounded-2xl border border-border bg-surface/70 p-3.5 backdrop-blur">
+              <div key={tk.id} className="rounded-2xl card-soft border border-transparent bg-surface/70 p-3.5 backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <p className="truncate text-sm font-semibold">{tk.subject}</p>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      open ? "bg-amber/15 text-amber" : "bg-success/15 text-success"
+                      open ? "bg-brand/15 text-brand" : "bg-success/15 text-success"
                     }`}
                   >
                     {open ? t("admin.support.open") : t("admin.support.resolved")}
@@ -118,7 +118,7 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
           setOpen(true);
           setSent(false);
         }}
-        className="w-full rounded-2xl border border-border bg-surface/60 px-4 py-3 text-sm text-text-dim backdrop-blur transition-colors hover:border-cyan/40 hover:text-text"
+        className="w-full rounded-2xl card-soft border border-transparent bg-surface/60 px-4 py-3 text-sm text-text-dim backdrop-blur transition-colors hover:border-zest/40 hover:text-text"
       >
         💬 {t("tracking.needHelp")}
       </button>
@@ -140,7 +140,7 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
               exit={{ y: 24, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-t-3xl border border-border bg-surface p-5 sm:rounded-3xl"
+              className="w-full max-w-md rounded-t-3xl card-soft border border-transparent bg-surface p-5 sm:rounded-3xl"
             >
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-display text-lg font-semibold">{t("tracking.supportTitle")}</h2>
@@ -176,20 +176,20 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder={t("tracking.supportSubject")}
-                    className="w-full rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-cyan"
+                    className="w-full rounded-xl border border-border/50 bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-zest"
                   />
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={t("tracking.supportMessage")}
                     rows={4}
-                    className="w-full resize-none rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-cyan"
+                    className="w-full resize-none rounded-xl border border-border/50 bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-zest"
                   />
                   <motion.button
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={sending || !subject.trim() || !message.trim()}
-                    className="w-full rounded-xl bg-cyan py-3 text-sm font-semibold text-bg disabled:opacity-50"
+                    className="w-full rounded-full bg-lime py-3 text-sm font-semibold text-ink disabled:opacity-50"
                   >
                     {sending ? t("tracking.supportSending") : t("tracking.supportSend")}
                   </motion.button>

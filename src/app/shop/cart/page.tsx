@@ -10,6 +10,7 @@ import { cartSubtotal, clearCart, setQty } from "@/lib/cart";
 import { useCart } from "@/lib/browserState";
 import { LocationPickerModal } from "@/components/LocationPickerModal";
 import { useLanguage } from "@/components/LanguageProvider";
+import { PortalBar } from "@/components/PortalBar";
 import { createClient } from "@/lib/supabase/client";
 
 const DELIVERY_FEE = 25;
@@ -155,22 +156,18 @@ export default function ShopCartPage() {
 
   return (
     <div className="relative min-h-screen pb-32">
-      <PageBackground accent="amber" image="/images/categories/produce.webp" imageOpacity={0.1} />
-      <header className="flex items-center gap-3.5 border-b border-border px-5 py-5">
-        <Link href="/shop" className="text-text">
-          ←
-        </Link>
-        <h1 className="font-display text-lg font-semibold">{t("cart.title")}</h1>
-      </header>
+      <PageBackground accent="brand" />
+      <PortalBar back="/shop" />
 
-      <main className="mx-auto max-w-lg space-y-5 p-5">
+      <main className="mx-auto max-w-xl space-y-5 px-4 pb-5 pt-8 sm:pt-12">
+        <h1 className="font-display text-4xl font-light tracking-[-0.045em] sm:text-5xl">{t("cart.title")}</h1>
         {cart.length === 0 ? (
           <div className="flex flex-col items-center py-16">
             <Image src="/images/empty/cart.webp" alt="" width={150} height={150} className="mb-4 opacity-70" />
             <p className="text-center text-sm text-text-dim">{t("cart.empty")}</p>
             <Link
               href="/shop"
-              className="mt-5 rounded-full bg-amber px-6 py-2.5 text-sm font-bold text-bg shadow-lg shadow-amber/25 transition-transform hover:scale-[1.04] active:scale-95"
+              className="mt-5 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-bg shadow-lg shadow-brand/25 transition-transform hover:scale-[1.04] active:scale-95"
             >
               {t("roles.customer.cta")}
             </Link>
@@ -182,7 +179,7 @@ export default function ShopCartPage() {
                 key={item.productId}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
+                className="flex items-center gap-3 rounded-xl card-soft border border-transparent bg-surface p-3"
               >
                 <div className="flex-grow">
                   <p className="text-sm font-medium">{item.name}</p>
@@ -219,25 +216,25 @@ export default function ShopCartPage() {
                 value={houseNo}
                 onChange={(e) => setHouseNo(e.target.value)}
                 placeholder={t("cart.houseNo")}
-                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+                className="w-full rounded-2xl border border-transparent bg-surface-raised px-4 py-3 text-sm outline-none focus:border-brand"
               />
               <input
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 placeholder={t("cart.street")}
-                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+                className="w-full rounded-2xl border border-transparent bg-surface-raised px-4 py-3 text-sm outline-none focus:border-brand"
               />
               <input
                 value={locality}
                 onChange={(e) => setLocality(e.target.value)}
                 placeholder={t("cart.locality")}
-                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+                className="w-full rounded-2xl border border-transparent bg-surface-raised px-4 py-3 text-sm outline-none focus:border-brand"
               />
               <input
                 value={landmark}
                 onChange={(e) => setLandmark(e.target.value)}
                 placeholder={t("cart.landmark")}
-                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 text-sm outline-none focus:border-amber"
+                className="w-full rounded-2xl border border-transparent bg-surface-raised px-4 py-3 text-sm outline-none focus:border-brand"
               />
             </div>
             <motion.button
@@ -245,7 +242,7 @@ export default function ShopCartPage() {
               whileTap={{ scale: 0.98 }}
               onClick={() => setPickerOpen(true)}
               className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-                coords ? "border border-success/40 bg-success/10 text-success" : "border border-amber/40 bg-amber/10 text-amber hover:bg-amber/20"
+                coords ? "border border-success/40 bg-success/10 text-success" : "border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20"
               }`}
             >
               {coords ? (
@@ -263,7 +260,7 @@ export default function ShopCartPage() {
         )}
 
         {cart.length > 0 && (
-          <section className="rounded-xl border border-border bg-surface p-4">
+          <section className="rounded-xl card-soft border border-transparent bg-surface p-4">
             <h2 className="mb-3 font-display text-sm font-semibold">{t("cart.orderSummary")}</h2>
             <div className="mb-2 flex justify-between text-sm text-text-dim">
               <span>{t("cart.subtotal")}</span>
@@ -286,16 +283,18 @@ export default function ShopCartPage() {
       </main>
 
       {cart.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface/95 p-4 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 px-2.5 pb-2.5 sm:px-4 sm:pb-4">
+          <div className="glass mx-auto max-w-xl rounded-[1.8rem] p-2.5 shadow-[0_18px_40px_-20px_rgba(40,24,110,0.45)] ring-1 ring-border/70">
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handlePlaceOrder}
             disabled={placing}
-            className="mx-auto flex w-full max-w-lg items-center justify-center gap-2 rounded-xl bg-amber py-3.5 text-sm font-bold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-brand py-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {placing ? t("cart.placing") : `${t("cart.placeOrder")} · ₹${total.toFixed(0)}`}
           </motion.button>
-          <p className="mt-2 text-center text-[11px] text-text-dim">{t("cart.autoAssignNote")}</p>
+          <p className="mt-1.5 pb-0.5 text-center text-[11px] text-text-dim">{t("cart.autoAssignNote")}</p>
+          </div>
         </div>
       )}
 

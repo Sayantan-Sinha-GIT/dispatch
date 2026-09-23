@@ -7,6 +7,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/LanguageProvider";
+import { PortalBar } from "@/components/PortalBar";
 import { formatDateTime } from "@/lib/datetime";
 import { isActiveOrder } from "@/lib/orderStatus";
 import type { Tables } from "@/lib/supabase/types";
@@ -67,21 +68,18 @@ export default function ShopOrdersPage() {
   return (
     <div className="relative min-h-screen pb-10">
       <PageBackground accent="both" image="/images/landing/how-it-works.webp" imageOpacity={0.12} />
-      <header className="flex items-center gap-3.5 border-b border-border px-5 py-5">
-        <Link href="/shop" className="text-text">
-          ←
-        </Link>
-        <h1 className="font-display text-lg font-semibold">{t("orders.myOrders")}</h1>
+      <PortalBar back="/shop">
         {orders && (
-          <span className="ml-auto rounded-full bg-surface-raised px-2.5 py-1 text-[11px] text-text-dim">
+          <span className="rounded-full bg-surface px-3 py-2 text-xs text-text-dim ring-1 ring-border">
             {t("orders.activeCount", {
               count: orders.filter((o) => isActiveOrder(o.status)).length,
             })}
           </span>
         )}
-      </header>
+      </PortalBar>
 
-      <main className="mx-auto max-w-lg space-y-2.5 p-5">
+      <main className="mx-auto max-w-xl space-y-2.5 px-4 pb-5 pt-8 sm:pt-12">
+        <h1 className="font-display text-4xl font-light tracking-[-0.045em] sm:text-5xl mb-6">{t("orders.myOrders")}</h1>
         {loadError && (
           <div className="rounded-2xl border border-danger/30 bg-danger/10 p-5 text-center">
             <p className="text-sm font-semibold text-danger">{t("orders.loadFailed")}</p>
@@ -105,7 +103,7 @@ export default function ShopOrdersPage() {
           <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Link
               href={`/shop/orders/${o.id}`}
-              className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition-colors hover:border-amber/40"
+              className="group flex items-center justify-between gap-3 rounded-[1.6rem] card-soft bg-surface p-4 pl-5 transition-transform hover:-translate-y-0.5"
             >
               <div>
                 <p className="text-sm font-medium">{o.address}</p>
@@ -113,7 +111,7 @@ export default function ShopOrdersPage() {
                   ₹{o.total_amount} · {formatDateTime(o.created_at, lang)}
                 </p>
               </div>
-              <span className="rounded-full bg-amber/15 px-2.5 py-1 text-[10px] font-semibold uppercase text-amber">
+              <span className="shrink-0 rounded-full bg-brand/10 px-3 py-1 text-[11px] font-medium text-brand">
                 {t(`status.${o.status}`)}
               </span>
             </Link>
@@ -124,7 +122,7 @@ export default function ShopOrdersPage() {
           <div className="flex flex-col items-center py-16 text-center">
             <Image src="/images/empty/orders.webp" alt="" width={150} height={150} className="mx-auto mb-4 opacity-70" />
             <p className="mb-4 text-sm text-text-dim">{t("orders.empty")}</p>
-            <Link href="/shop" className="rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-bg">
+            <Link href="/shop" className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white">
               {t("hero.orderNow").replace(" →", "")}
             </Link>
           </div>

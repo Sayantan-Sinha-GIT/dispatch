@@ -1,13 +1,13 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { PageBackground } from "@/components/PageBackground";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
+import { PortalBar } from "@/components/PortalBar";
 import { CancelWindow } from "@/components/shop/CancelWindow";
 import { SupportSheet } from "@/components/shop/SupportSheet";
 import { DeliveryCodeCard, DisputeCard } from "@/components/shop/DeliveryProof";
@@ -115,11 +115,11 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
   if (notFound) {
     return (
       <div className="relative flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center text-sm text-text-dim">
-        <AmbientBackground accent="amber" />
+        <AmbientBackground accent="brand" />
         <span className="text-3xl">🚫</span>
         <p className="text-base font-semibold text-text">{t("tracking.cancelled.title")}</p>
         <p className="max-w-xs">{t("tracking.cancelled.body")}</p>
-        <Link href="/shop/orders" className="mt-2 rounded-full bg-amber px-5 py-2 font-semibold text-bg">
+        <Link href="/shop/orders" className="mt-2 rounded-full bg-brand px-5 py-2.5 font-medium text-white">
           {t("tracking.backToOrders")}
         </Link>
       </div>
@@ -129,7 +129,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
   if (!order) {
     return (
       <div className="relative flex min-h-screen items-center justify-center bg-bg text-sm text-text-dim">
-        <AmbientBackground accent="cyan" />
+        <AmbientBackground accent="zest" />
         <motion.span animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} className="mr-2 text-lg">
           🛵
         </motion.span>
@@ -141,7 +141,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
   const active = stepIndex(order.status);
   const isDelivered = order.status === "delivered";
   const isCancelled = order.status === "cancelled";
-  const accent: "amber" | "cyan" | "success" = isDelivered ? "success" : active >= 2 ? "cyan" : "amber";
+  const accent: "brand" | "zest" | "success" = isDelivered ? "success" : active >= 2 ? "zest" : "brand";
   const items = Array.isArray(order.items) ? (order.items as { name: string; qty: number; price: number }[]) : [];
   const rider = order.riders ?? null;
   const stepTimestamps: Record<string, string | null> = {
@@ -153,30 +153,26 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
 
   return (
     <div className="relative min-h-screen pb-10">
-      <PageBackground accent="cyan" image="/images/landing/how-it-works.webp" imageOpacity={0.13} />
       <AmbientBackground accent={accent} />
       <AnimatePresence>{justDelivered && <Confetti />}</AnimatePresence>
 
-      <header className="flex items-center gap-3.5 border-b border-border/60 px-5 py-5 backdrop-blur-sm">
-        <Link href="/shop/orders" className="text-text">
-          ←
-        </Link>
-        <div>
-          <p className="text-[11px] text-text-dim">
+      <PortalBar back="/shop/orders" />
+
+      <div className="mx-auto max-w-xl px-4 pt-8 sm:pt-12">
+          <p className="text-xs text-text-dim">
             {t("tracking.orderNumber")} #{order.id.slice(0, 8)} · {formatDateTime(order.created_at, lang)}
           </p>
           <motion.h1
             key={order.status}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-lg font-semibold"
+            className="font-display text-4xl font-light tracking-[-0.045em] sm:text-5xl mt-2"
           >
             {isCancelled ? t("tracking.head.cancelled") : isDelivered ? t("tracking.head.delivered") : active === 2 ? t("tracking.head.assigned") : active === 1 ? t("tracking.head.offered") : t("tracking.head.pending")}
           </motion.h1>
-        </div>
-      </header>
+      </div>
 
-      <main className="mx-auto max-w-lg space-y-5 p-5">
+      <main className="mx-auto max-w-xl space-y-5 px-4 pb-5 pt-6">
         {/* Same reason as the rider sheets: a plain component inside
             AnimatePresence can be left behind in the DOM after it unmounts,
             and a stale "free cancellation" timer is worse than no animation. */}
@@ -208,12 +204,12 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 rounded-2xl border border-cyan/20 bg-gradient-to-br from-cyan/10 via-surface to-surface p-4"
+            className="flex items-center gap-3 rounded-2xl border border-zest/20 bg-gradient-to-br from-zest/10 via-surface to-surface p-4"
           >
             <motion.span
               animate={{ scale: [1, 1.08, 1] }}
               transition={{ duration: 1.8, repeat: Infinity }}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan font-display font-bold text-bg"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-lime font-display font-bold text-ink"
             >
               {rider.profiles?.name?.charAt(0).toUpperCase() ?? "R"}
             </motion.span>
@@ -226,7 +222,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-3 rounded-2xl border border-amber/20 bg-amber/5 p-4"
+            className="flex items-center gap-3 rounded-2xl border border-brand/20 bg-brand/5 p-4"
           >
             <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.6, repeat: Infinity }} className="text-2xl">
               📡
@@ -258,10 +254,10 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           </motion.div>
         )}
 
-        <div className="relative space-y-6 rounded-2xl border border-border bg-surface/60 p-5 pl-9 backdrop-blur">
+        <div className="relative space-y-6 rounded-2xl card-soft border border-transparent bg-surface/60 p-5 pl-9 backdrop-blur">
           <div className="absolute bottom-6 left-[27px] top-6 w-0.5 overflow-hidden rounded-full bg-border">
             <motion.div
-              className="w-full origin-top bg-gradient-to-b from-amber to-success"
+              className="w-full origin-top bg-gradient-to-b from-brand to-success"
               initial={{ scaleY: 0 }}
               animate={{ scaleY: active / 3 }}
               transition={{ duration: 0.8, ease: "easeInOut" }}
@@ -289,7 +285,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           ))}
         </div>
 
-        <section className="rounded-2xl border border-border bg-surface p-4">
+        <section className="rounded-2xl card-soft border border-transparent bg-surface p-4">
           <h2 className="mb-3 font-display text-sm font-semibold">{t("tracking.orderSummary")}</h2>
           {items.map((it, i) => (
             <div key={i} className="mb-1.5 flex justify-between text-sm text-text-dim">
@@ -305,7 +301,7 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border bg-surface p-4">
+        <section className="rounded-2xl card-soft border border-transparent bg-surface p-4">
           <h2 className="mb-1 font-display text-sm font-semibold">{t("tracking.deliveringTo")}</h2>
           <p className="text-sm text-text-dim">{order.address}</p>
         </section>

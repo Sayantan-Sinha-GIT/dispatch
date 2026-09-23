@@ -10,6 +10,7 @@ import { addToCart, cartCount, cartSubtotal } from "@/lib/cart";
 import { useCart } from "@/lib/browserState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PortalBar, barPill } from "@/components/PortalBar";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
 import type { Tables } from "@/lib/supabase/types";
@@ -93,113 +94,88 @@ export default function ShopCatalogPage() {
 
   return (
     <div className="relative min-h-screen pb-28">
-      <PageBackground accent="amber" grid={false} />
-      <header className="sticky top-0 z-30 border-b border-border bg-gradient-to-r from-surface via-surface to-amber/10 px-6 py-5 backdrop-blur-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber to-amber/60 font-display font-bold text-bg">
-              D
-            </span>
-            <div>
-              <h1 className="font-display text-lg font-semibold leading-tight">{t("shop.title")}</h1>
-              <p className="text-xs text-text-dim">{t("shop.tagline")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle className="hidden sm:flex" />
-            <ThemeToggle className="hidden sm:flex" />
-            {profileId && <NotificationBell profileId={profileId} accent="amber" />}
-            <Link
-              href="/shop/orders"
-              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-dim transition-colors hover:border-amber/50 hover:text-text"
-            >
-              {t("shop.myOrders")}
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-dim transition-colors hover:border-amber/50 hover:text-text"
-            >
-              {t("shop.signOut")}
-            </button>
-          </div>
-        </div>
+      <PageBackground accent="brand" grid={false} />
+      <PortalBar>
+        <LanguageToggle className="hidden sm:flex" />
+        <ThemeToggle className="hidden sm:flex" />
+        {profileId && <NotificationBell profileId={profileId} accent="brand" />}
+        <Link href="/shop/orders" className={barPill}>
+          {t("shop.myOrders")}
+        </Link>
+        <button onClick={handleSignOut} className={`${barPill} hidden sm:block`}>
+          {t("shop.signOut")}
+        </button>
+      </PortalBar>
 
-        <div className="relative mt-4">
-          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-dim">🔍</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("shop.searchPlaceholder")}
-            className="w-full rounded-xl border border-border bg-surface-raised py-2.5 pl-10 pr-3.5 text-sm outline-none transition-colors focus:border-amber"
-          />
-        </div>
+      <section className="mx-auto max-w-[1400px] px-2.5 pt-2.5 sm:px-4 sm:pt-4">
+        <div className="sheet-wash overflow-hidden px-5 pb-5 pt-8 sm:px-10 sm:pb-8 sm:pt-12">
+          <p className="flex items-center gap-2 text-sm text-text-dim">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+            {t("shop.tagline")}
+          </p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-5">
+            <h1 className="font-display text-4xl font-light leading-none tracking-[-0.045em] sm:text-6xl">{t("roles.customer.title")}</h1>
+            <label className="relative w-full max-w-md">
+              <svg viewBox="0 0 20 20" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-dim" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                <circle cx="9" cy="9" r="6" />
+                <path d="m14 14 4 4" />
+              </svg>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("shop.searchPlaceholder")}
+                aria-label={t("shop.searchPlaceholder")}
+                className="w-full rounded-full bg-surface py-3.5 pl-11 pr-4 text-sm shadow-[0_10px_30px_-20px_rgba(60,36,160,0.5)] outline-none ring-1 ring-transparent transition-shadow focus:ring-brand/60"
+              />
+            </label>
+          </div>
 
-        <div className="-mx-4 mt-3.5 flex gap-2.5 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {categories.map((c, i) => {
-            const img = CATEGORY_IMAGE[c];
-            const active = category === c;
-            return (
-              <motion.button
-                key={c}
-                onClick={() => setCategory(c)}
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.04, type: "spring", stiffness: 220, damping: 24 }}
-                whileTap={{ scale: 0.95 }}
-                className={`group relative h-16 w-28 shrink-0 overflow-hidden rounded-2xl text-left ring-1 transition-all duration-300 ${
-                  active ? "ring-2 ring-amber" : "ring-border/70 hover:ring-amber/50"
-                }`}
-              >
-                {img ? (
-                  <Image
-                    src={img}
-                    alt=""
-                    fill
-                    sizes="112px"
-                    className={`object-cover transition-transform duration-500 group-hover:scale-110 ${
-                      active ? "scale-105" : ""
-                    }`}
-                  />
-                ) : (
-                  /* "All" has no photograph of its own, so it shows four of the
-                     others as a mosaic - it reads as "everything" and keeps the
-                     row even. The old colour wash looked like an empty slot. */
-                  <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-black">
-                    {Object.values(CATEGORY_IMAGE)
-                      .slice(0, 4)
-                      .map((src) => (
-                        <div key={src} className="relative">
-                          <Image
-                            src={src}
-                            alt=""
-                            fill
-                            sizes="56px"
-                            className={`object-cover transition-transform duration-500 group-hover:scale-110 ${
-                              active ? "scale-105" : ""
-                            }`}
-                          />
-                        </div>
-                      ))}
-                  </div>
-                )}
-                <div className={`absolute inset-0 transition-colors ${active ? "bg-black/35" : "bg-black/55 group-hover:bg-black/40"}`} />
-                <span
-                  className={`absolute bottom-2 left-2.5 text-xs font-bold drop-shadow-lg transition-colors ${
-                    active ? "text-amber" : "text-white"
+          <div className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:-mx-10 sm:px-10 [&::-webkit-scrollbar]:hidden">
+            {categories.map((c, i) => {
+              const img = CATEGORY_IMAGE[c];
+              const active = category === c;
+              return (
+                <motion.button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04, type: "spring", stiffness: 220, damping: 24 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-pressed={active}
+                  className={`flex shrink-0 items-center gap-2.5 rounded-full py-1 pl-1 pr-4 text-sm transition-colors duration-300 ${
+                    active ? "bg-ink text-white dark:bg-white dark:text-ink" : "bg-surface/80 text-text hover:bg-surface"
                   }`}
                 >
+                  <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full">
+                    {img ? (
+                      <Image src={img} alt="" fill sizes="36px" className="object-cover" />
+                    ) : (
+                      /* "All" has no photograph of its own, so it shows four of
+                         the others as a mosaic, which reads as "everything". */
+                      <span className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                        {Object.values(CATEGORY_IMAGE)
+                          .slice(0, 4)
+                          .map((src) => (
+                            <span key={src} className="relative">
+                              <Image src={src} alt="" fill sizes="18px" className="object-cover" />
+                            </span>
+                          ))}
+                      </span>
+                    )}
+                  </span>
                   {c === "All" ? t("shop.all") : c}
-                </span>
-              </motion.button>
-            );
-          })}
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
-      </header>
+      </section>
 
-      <main className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
+      <main className="mx-auto grid max-w-[1400px] grid-cols-2 gap-2.5 px-2.5 pt-2.5 sm:grid-cols-3 sm:gap-4 sm:px-4 sm:pt-4 lg:grid-cols-4">
         {loading
           ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-2xl border border-border bg-surface p-3.5">
+              <div key={i} className="animate-pulse rounded-2xl card-soft border border-transparent bg-surface p-3.5">
                 <div className="mb-2.5 h-20 w-full rounded-xl bg-surface-raised" />
                 <div className="mb-2 h-3.5 w-3/4 rounded bg-surface-raised" />
                 <div className="h-3 w-1/2 rounded bg-surface-raised" />
@@ -219,7 +195,7 @@ export default function ShopCatalogPage() {
                      waiting seconds to appear. */
                   transition={{ delay: Math.min(i * 0.035, 0.45), type: "spring", stiffness: 190, damping: 24 }}
                   whileHover={{ y: -6 }}
-                  className={`group relative overflow-hidden rounded-3xl bg-surface text-left shadow-lg shadow-black/25 ring-1 ring-border/70 transition-[box-shadow,transform] duration-300 hover:shadow-xl hover:shadow-amber/10 hover:ring-amber/40 ${!p.in_stock ? "opacity-55" : ""}`}
+                  className={`group relative overflow-hidden rounded-[1.8rem] bg-surface text-left shadow-[0_22px_50px_-34px_rgba(60,36,160,0.45)] transition-[box-shadow,transform] duration-300 hover:shadow-[0_30px_60px_-30px_rgba(60,36,160,0.55)] ${!p.in_stock ? "opacity-55" : ""}`}
                 >
                   <ProductImage
                     src={p.image_url}
@@ -236,7 +212,7 @@ export default function ShopCatalogPage() {
                       initial={{ scale: 0, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: "spring", stiffness: 500, damping: 18 }}
-                      className="absolute right-2.5 top-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-amber px-1.5 font-display text-xs font-bold text-bg shadow-lg"
+                      className="absolute right-2.5 top-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-brand px-1.5 font-display text-xs font-bold text-bg shadow-lg"
                     >
                       {inCart.qty}
                     </motion.span>
@@ -262,8 +238,8 @@ export default function ShopCatalogPage() {
                             e.stopPropagation();
                             addToCart({ productId: p.id, name: p.name, price: p.price, unit: p.unit }, p.stock_qty);
                           }}
-                          className={`rounded-full bg-amber/15 px-3 py-1.5 text-xs font-bold text-amber transition-colors ${
-                            atLimit ? "cursor-not-allowed opacity-40" : "hover:bg-amber hover:text-bg"
+                          className={`rounded-full bg-brand/15 px-3 py-1.5 text-xs font-bold text-brand transition-colors ${
+                            atLimit ? "cursor-not-allowed opacity-40" : "hover:bg-brand hover:text-bg"
                           }`}
                         >
                           {inCart ? `+ (${inCart.qty})` : t("shop.add")}
@@ -301,7 +277,7 @@ export default function ShopCatalogPage() {
           >
             <Link
               href="/shop/cart"
-              className="mx-auto flex max-w-lg items-center justify-between rounded-xl bg-amber px-5 py-3.5 font-semibold text-bg"
+              className="mx-auto flex max-w-lg items-center justify-between rounded-xl bg-brand px-5 py-3.5 font-semibold text-bg"
             >
               <span>
                 {count} {t("shop.itemsInCart")}
@@ -330,7 +306,7 @@ export default function ShopCatalogPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.97 }}
               transition={{ type: "spring", damping: 26, stiffness: 300 }}
-              className="w-full max-w-sm overflow-hidden rounded-t-3xl border border-border bg-surface sm:rounded-3xl"
+              className="w-full max-w-sm overflow-hidden rounded-t-3xl card-soft border border-transparent bg-surface sm:rounded-3xl"
             >
               <div className="relative aspect-[4/3] w-full">
                 <ProductImage
@@ -359,12 +335,12 @@ export default function ShopCatalogPage() {
                   {viewingLive.category} · {viewingLive.unit}
                 </p>
                 <h2 className="mt-1 font-display text-xl font-bold">{viewingLive.name}</h2>
-                <p className="mt-1 font-display text-lg font-bold text-amber">₹{viewingLive.price}</p>
+                <p className="mt-1 font-display text-lg font-bold text-brand">₹{viewingLive.price}</p>
                 {viewingLive.in_stock && viewingLive.stock_qty <= LOW_STOCK && (
                   <p className="mt-1 text-xs font-semibold text-danger">{t("shop.onlyLeft", { count: viewingLive.stock_qty })}</p>
                 )}
 
-                <div className="mt-4 rounded-xl border border-border bg-surface-raised p-3.5">
+                <div className="mt-4 rounded-xl border border-border/50 bg-surface-raised p-3.5">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-dim">{t("shop.productDetails")}</p>
                   <p className="text-sm text-text-dim">{t("shop.noInfo")}</p>
                 </div>
@@ -379,7 +355,7 @@ export default function ShopCatalogPage() {
                     );
                     setViewing(null);
                   }}
-                  className="mt-5 w-full rounded-xl bg-amber py-3 text-sm font-bold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+                  className="mt-5 w-full rounded-full bg-brand py-3 text-sm font-bold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
                   {t("shop.addToCart")}
                 </motion.button>

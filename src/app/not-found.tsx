@@ -25,7 +25,7 @@ export default function NotFound() {
       >
         <p
           aria-hidden
-          className="font-display text-[7rem] font-bold leading-none tracking-tighter text-transparent [-webkit-text-stroke:1.5px_var(--amber)] sm:text-[9rem]"
+          className="font-display text-[7rem] font-bold leading-none tracking-tighter text-transparent [-webkit-text-stroke:1.5px_var(--brand)] sm:text-[9rem]"
         >
           404
         </p>
@@ -33,11 +33,11 @@ export default function NotFound() {
 
         {/* The route that goes nowhere: a dashed path ending in an open stop. */}
         <svg className="mt-4 h-10 w-56" viewBox="0 0 224 40" aria-hidden>
-          <circle cx="8" cy="30" r="5" fill="var(--amber)" />
+          <circle cx="8" cy="30" r="5" fill="var(--brand)" />
           <motion.path
             d="M 14 30 C 60 30, 70 8, 116 12 S 180 34, 208 14"
             fill="none"
-            stroke="var(--amber)"
+            stroke="var(--brand)"
             strokeWidth="2"
             strokeDasharray="5 7"
             initial={{ pathLength: 0 }}
@@ -51,7 +51,7 @@ export default function NotFound() {
         <p className="mt-2 text-sm text-text-dim">{t("notFound.body")}</p>
         <Link
           href="/"
-          className="mt-7 rounded-full bg-amber px-7 py-3 text-sm font-bold text-bg shadow-lg shadow-amber/25 transition-transform hover:scale-[1.04] active:scale-95"
+          className="mt-7 rounded-full bg-brand px-7 py-3 text-sm font-bold text-bg shadow-lg shadow-brand/25 transition-transform hover:scale-[1.04] active:scale-95"
         >
           {t("notFound.home")}
         </Link>

@@ -17,11 +17,11 @@ export type AdminRider = Tables<"riders"> & { profiles?: { name: string } | null
 /** Stage colours, shared by the pipeline, the status pills and the order dots. */
 export const STAGE_TONE: Record<string, { dot: string; pill: string }> = {
   pending: { dot: "bg-text-dim", pill: "bg-text-dim/15 text-text-dim" },
-  offered: { dot: "bg-amber", pill: "bg-amber/15 text-amber" },
-  assigned: { dot: "bg-cyan", pill: "bg-cyan/15 text-cyan" },
+  offered: { dot: "bg-brand", pill: "bg-brand/15 text-brand" },
+  assigned: { dot: "bg-zest", pill: "bg-zest/15 text-zest" },
   delivered: { dot: "bg-success", pill: "bg-success/15 text-success" },
   failed: { dot: "bg-danger", pill: "bg-danger/15 text-danger" },
-  expired: { dot: "bg-amber", pill: "bg-amber/15 text-amber" },
+  expired: { dot: "bg-brand", pill: "bg-brand/15 text-brand" },
   cancelled: { dot: "bg-danger", pill: "bg-danger/15 text-danger" },
 };
 
@@ -43,8 +43,8 @@ export function PipelineStrip({ orders, ridersOnline }: { orders: Order[]; rider
   const { t } = useLanguage();
   const stages = [
     { key: "pending", label: t("admin.kpi.pending"), color: "var(--text-dim)" },
-    { key: "offered", label: t("admin.kpi.awaitingAccept"), color: "var(--amber)" },
-    { key: "assigned", label: t("admin.kpi.inProgress"), color: "var(--cyan)" },
+    { key: "offered", label: t("admin.kpi.awaitingAccept"), color: "var(--brand)" },
+    { key: "assigned", label: t("admin.kpi.inProgress"), color: "var(--zest)" },
     { key: "delivered", label: t("admin.kpi.delivered"), color: "var(--success)" },
   ].map((s) => ({ ...s, value: orders.filter((o) => o.status === s.key).length }));
   const flowTotal = stages.reduce((sum, s) => sum + s.value, 0);
@@ -134,10 +134,10 @@ export function RoutingCard({
 
   return (
     <section className={`${panel} relative overflow-hidden p-5`}>
-      <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-cyan/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-zest/10 blur-3xl" />
       <div className="relative flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-display text-sm font-semibold">
-          <span className="text-cyan">
+          <span className="text-zest">
             <PulseIcon />
           </span>
           {t("admin.routing")}
@@ -148,7 +148,7 @@ export function RoutingCard({
       {lastRun ? (
         <div className="relative mt-4">
           <div className="flex items-baseline gap-2.5">
-            <StatCounter value={after} suffix=" km" className="font-display text-3xl font-semibold tabular-nums text-cyan" />
+            <StatCounter value={after} suffix=" km" className="font-display text-3xl font-semibold tabular-nums text-zest" />
             {saved > 0 && (
               <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
                 −{saved.toFixed(0)}%
@@ -160,7 +160,7 @@ export function RoutingCard({
             <div className="flex items-center gap-2">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border/40">
                 <motion.div
-                  className="h-full rounded-full bg-cyan"
+                  className="h-full rounded-full bg-zest"
                   initial={{ width: 0 }}
                   animate={{ width: before ? `${(after / before) * 100}%` : "0%" }}
                   transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
@@ -185,10 +185,10 @@ export function RoutingCard({
         whileTap={{ scale: 0.98 }}
         onClick={onOptimize}
         disabled={optimizing || !canOptimize}
-        className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-cyan/40 bg-cyan/10 py-2.5 text-sm font-semibold text-cyan transition-colors hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-45"
+        className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-zest/40 bg-zest/10 py-2.5 text-sm font-semibold text-zest transition-colors hover:bg-zest/20 disabled:cursor-not-allowed disabled:opacity-45"
       >
         {optimizing ? (
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-cyan border-t-transparent" />
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zest border-t-transparent" />
         ) : (
           <BoltIcon className="h-4 w-4" />
         )}
@@ -228,7 +228,7 @@ export function RidersPanel({
       </h2>
       <p className="mt-1.5 text-xs leading-relaxed text-text-dim">
         {t("admin.ridersHint1")}{" "}
-        <a href="/rider/signup" target="_blank" rel="noreferrer" className="text-cyan underline-offset-2 hover:underline">
+        <a href="/rider/signup" target="_blank" rel="noreferrer" className="text-zest underline-offset-2 hover:underline">
           {t("admin.riderPortalLink")}
         </a>{" "}
         {t("admin.ridersHint2")}
@@ -248,7 +248,7 @@ export function RidersPanel({
               whileHover={{ x: 2 }}
               onClick={() => onFocus(rider.id)}
               className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm transition-colors ${
-                focused ? "bg-cyan/10 ring-1 ring-cyan/40" : "hover:bg-surface-raised"
+                focused ? "bg-zest/10 ring-1 ring-zest/40" : "hover:bg-surface-raised"
               }`}
             >
               <span
@@ -303,7 +303,7 @@ export function ActivityTimeline({ activity }: { activity: Notification[] }) {
       ) : (
         <ol className="relative mt-4 max-h-72 space-y-4 overflow-y-auto pr-1">
           {/* The spine the events hang from. */}
-          <span className="absolute bottom-2 left-[5px] top-2 w-px bg-gradient-to-b from-amber/50 via-border to-transparent" />
+          <span className="absolute bottom-2 left-[5px] top-2 w-px bg-gradient-to-b from-brand/50 via-border to-transparent" />
           {activity.map((n, i) => (
             <motion.li
               key={n.id}
@@ -314,7 +314,7 @@ export function ActivityTimeline({ activity }: { activity: Notification[] }) {
             >
               <span
                 className={`absolute left-0 top-1 h-[11px] w-[11px] rounded-full border-2 border-surface ${
-                  i === 0 ? "bg-amber" : "bg-border"
+                  i === 0 ? "bg-brand" : "bg-border"
                 }`}
               />
               <div className="flex items-baseline justify-between gap-3">
@@ -415,7 +415,7 @@ export function OrdersBoard({
         <h2 className="font-display text-sm font-semibold">
           {t("admin.orders")} <span className="font-normal tabular-nums text-text-dim">· {orders.length}</span>
         </h2>
-        <label className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-text-dim ring-1 ring-border/70 focus-within:ring-amber/60 sm:w-64">
+        <label className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-text-dim ring-1 ring-border/70 focus-within:ring-brand/60 sm:w-64">
           <SearchIcon className="h-3.5 w-3.5 shrink-0" />
           <input
             value={query}
@@ -440,7 +440,7 @@ export function OrdersBoard({
               {active && (
                 <motion.span
                   layoutId="orders-filter"
-                  className={`absolute inset-0 rounded-full ${f.key === "disputed" ? "bg-danger" : "bg-amber"}`}
+                  className={`absolute inset-0 rounded-full ${f.key === "disputed" ? "bg-danger" : "bg-brand"}`}
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               )}
@@ -461,7 +461,7 @@ export function OrdersBoard({
             <li
               key={order.id}
               className={`group flex items-center gap-2 rounded-xl px-2 transition-colors ${
-                focused ? "bg-cyan/10" : "hover:bg-surface-raised/70"
+                focused ? "bg-zest/10" : "hover:bg-surface-raised/70"
               }`}
             >
               <button
@@ -506,10 +506,10 @@ export function OrdersBoard({
                     disabled={reassigningId === order.id}
                     title={t("admin.tip.reassign")}
                     aria-label={t("admin.tip.reassign")}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-amber/15 hover:text-amber disabled:opacity-50"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-brand/15 hover:text-brand disabled:opacity-50"
                   >
                     {reassigningId === order.id ? (
-                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber border-t-transparent" />
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
                     ) : (
                       <UndoIcon className="h-4 w-4" />
                     )}

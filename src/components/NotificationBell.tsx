@@ -22,7 +22,7 @@ const ICONS: Record<string, string> = {
   order_delivered: "✅",
 };
 
-export function NotificationBell({ profileId, accent = "amber" }: { profileId: string; accent?: "amber" | "cyan" }) {
+export function NotificationBell({ profileId, accent = "brand" }: { profileId: string; accent?: "brand" | "zest" }) {
   const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
@@ -75,7 +75,7 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
   }
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const accentClass = accent === "amber" ? "bg-amber text-bg" : "bg-cyan text-bg";
+  const accentClass = accent === "brand" ? "bg-brand text-bg" : "bg-lime text-ink";
 
   return (
     <div className="relative" ref={containerRef}>
@@ -86,7 +86,7 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
         }}
         aria-label={t("a11y.notifications")}
         aria-expanded={open}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-raised transition-colors hover:border-amber/40"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-surface-raised transition-colors hover:border-brand/40"
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
@@ -112,7 +112,7 @@ export function NotificationBell({ profileId, accent = "amber" }: { profileId: s
             // On a phone the bell is not always at the screen's right edge (the
             // shop header has buttons after it), so a panel hung from the bell
             // ran off the left side. Below `sm` it spans the screen instead.
-            className="fixed inset-x-3 top-16 z-[1600] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-2xl shadow-black/50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80"
+            className="fixed inset-x-3 top-16 z-[1600] overflow-hidden rounded-xl border border-border/50 bg-surface-raised shadow-2xl shadow-black/50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80"
           >
             <div className="border-b border-border px-4 py-2.5">
               <p className="text-sm font-semibold">{t("notif.title")}</p>

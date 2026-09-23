@@ -14,10 +14,10 @@ export function DeliveryCodeCard({ code }: { code: string }) {
     <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-amber/30 bg-gradient-to-br from-amber/10 via-surface to-surface p-4 text-center"
+      className="rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/10 via-surface to-surface p-4 text-center"
     >
       <p className="text-xs uppercase tracking-wide text-text-dim">{t("tracking.code.title")}</p>
-      <p className="my-2 font-mono text-3xl font-bold tracking-[0.35em] text-amber">{code}</p>
+      <p className="my-2 font-mono text-3xl font-bold tracking-[0.35em] text-brand">{code}</p>
       <p className="text-[11px] leading-relaxed text-text-dim">{t("tracking.code.hint")}</p>
     </motion.section>
   );
@@ -44,7 +44,7 @@ export function DisputeCard({
         ? "border-success/40 bg-success/10 text-success"
         : disputeStatus === "rejected"
           ? "border-border bg-surface-raised text-text-dim"
-          : "border-amber/40 bg-amber/10 text-amber";
+          : "border-brand/40 bg-brand/10 text-brand";
     return (
       <section className={`rounded-2xl border p-4 text-sm ${tone}`}>
         {t(`tracking.dispute.status.${disputeStatus}`)}
@@ -73,7 +73,7 @@ export function DisputeCard({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-4">
+    <section className="rounded-2xl card-soft border border-transparent bg-surface p-4">
       <h2 className="mb-1 font-display text-sm font-semibold">{t("tracking.dispute.title")}</h2>
       <p className="mb-3 text-xs leading-relaxed text-text-dim">{t("tracking.dispute.body")}</p>
 
@@ -88,7 +88,7 @@ export function DisputeCard({
             onChange={(e) => setReason(e.target.value)}
             rows={3}
             placeholder={t("tracking.dispute.placeholder")}
-            className="mb-2 w-full resize-none rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-danger"
+            className="mb-2 w-full resize-none rounded-xl border border-border/50 bg-surface-raised px-3 py-2.5 text-sm outline-none focus:border-danger"
           />
           {error && <p className="mb-2 text-xs text-danger">{error}</p>}
           <div className="flex gap-2">

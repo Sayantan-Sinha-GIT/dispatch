@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { AuthBackground } from "@/components/AuthBackground";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { EyeIcon, EyeOffIcon } from "@/components/Icons";
 
@@ -112,37 +110,19 @@ function ResetPassword() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <AuthBackground accent="amber" />
-
-      <div className="absolute right-4 top-4 z-10 flex gap-2">
-        <LanguageToggle />
-        <ThemeToggle />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative w-full max-w-sm rounded-2xl border border-border bg-surface/90 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl"
-      >
-        <Link href="/" className="mb-8 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber font-display font-bold text-bg">D</span>
-          <div>
-            <h1 className="font-display text-lg font-semibold leading-none">Dispatch</h1>
-            <p className="text-xs text-text-dim">{t("login.resetTagline")}</p>
-          </div>
-        </Link>
+    <AuthShell role={role === "rider" ? "rider" : role === "admin" ? "admin" : "customer"} headline={t("login.resetTitle")} sub={t("login.resetTagline")}>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}>
+        <h2 className="mb-6 font-display text-3xl font-light tracking-[-0.03em]">{t("login.resetTitle")}</h2>
 
         {checking ? (
           <p className="py-6 text-center text-xs text-text-dim">{t("login.redirecting")}</p>
         ) : !hasSession ? (
           <div className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber/15 text-xl">⏳</div>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand/15 text-xl">⏳</div>
             <p className="mb-5 text-xs leading-relaxed text-text-dim">{t("login.err.resetLinkDead")}</p>
             <Link
               href={`/login?role=${role}`}
-              className="block w-full rounded-lg border border-amber/40 py-2.5 text-sm font-semibold text-amber"
+              className="block w-full rounded-lg border border-brand/40 py-2.5 text-sm font-semibold text-brand"
             >
               {t("login.backToSignIn")}
             </Link>
@@ -160,14 +140,14 @@ function ResetPassword() {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-amber py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-full bg-brand py-3 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {saving ? t("login.updating") : t("login.updatePassword")}
             </motion.button>
           </form>
         )}
       </motion.div>
-    </div>
+    </AuthShell>
   );
 }
 
@@ -192,7 +172,7 @@ function PasswordField({
           onChange={(e) => onChange(e.target.value)}
           required
           placeholder="••••••••"
-          className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2.5 pr-10 text-sm outline-none transition-colors focus:border-amber"
+          className="w-full rounded-lg border border-border/50 bg-surface-raised px-3 py-2.5 pr-10 text-sm outline-none transition-colors focus:border-brand"
         />
         <button
           type="button"

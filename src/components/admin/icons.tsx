@@ -8,6 +8,8 @@
  * weight, so they belong to the same system as the text.
  */
 
+import { LogoMark } from "@/components/Brand";
+
 type IconProps = { className?: string };
 
 function Svg({ className = "h-4 w-4", children }: IconProps & { children: React.ReactNode }) {
@@ -125,10 +127,5 @@ export const ImageIcon = (p: IconProps) => (
 
 /** The console's brand mark: two stops joined by a route. */
 export function BrandMark() {
-  return (
-    <span className="relative flex h-9 w-9 shrink-0 sm:h-11 sm:w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-amber via-amber to-[#ff7a1a] text-bg shadow-[0_10px_30px_-10px] shadow-amber/60">
-      <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.45),transparent_55%)]" />
-      <RouteIcon className="relative h-5 w-5 sm:h-6 sm:w-6" />
-    </span>
-  );
+  return <LogoMark className="h-9 w-9 sm:h-11 sm:w-11" />;
 }

@@ -78,16 +78,16 @@ export function CancelWindow({
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="overflow-hidden rounded-2xl border border-amber/40 bg-amber/5 p-4"
+      className="overflow-hidden rounded-2xl border border-brand/40 bg-brand/5 p-4"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-amber">
+          <p className="text-xs font-semibold text-brand">
             {t("tracking.cancelWindow", { time: timeLabel })}
           </p>
-          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-amber/20">
+          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-brand/20">
             <motion.div
-              className="h-full rounded-full bg-amber"
+              className="h-full rounded-full bg-brand"
               animate={{ width: `${progress * 100}%` }}
               transition={{ ease: "linear", duration: 0.5 }}
             />

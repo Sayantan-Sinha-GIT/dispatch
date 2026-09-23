@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Manrope, JetBrains_Mono } from "next/font/google";
+import { Onest, JetBrains_Mono } from "next/font/google";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+// One family for headings and text, as in the reference designs: light
+// weights for the big lines, regular and medium for everything else.
+const onest = Onest({
+  variable: "--font-onest",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -22,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dispatch — Route Optimizer",
+  title: "Dispatch — Hyperlocal delivery",
   description: "Hyperlocal delivery dispatch and route optimization",
   manifest: "/manifest.json",
   icons: {
@@ -40,7 +36,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#0a0d12",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2f0f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0b14" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -51,13 +50,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      // Light is the default; the boot script below switches to dark only for
+      // someone who chose it, before the first paint.
+      data-theme="light"
       suppressHydrationWarning
-      className={`${spaceGrotesk.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${onest.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}`,
+            __html: `try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}`,
           }}
         />
       </head>

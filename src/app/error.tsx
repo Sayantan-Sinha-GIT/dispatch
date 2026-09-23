@@ -36,7 +36,7 @@ export default function ErrorPage({ error, retry }: { error: Error & { digest?: 
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => retry()}
-            className="rounded-full bg-amber px-7 py-3 text-sm font-bold text-bg shadow-lg shadow-amber/25 transition-transform hover:scale-[1.04] active:scale-95"
+            className="rounded-full bg-brand px-7 py-3 text-sm font-bold text-bg shadow-lg shadow-brand/25 transition-transform hover:scale-[1.04] active:scale-95"
           >
             {t("error.retry")}
           </button>

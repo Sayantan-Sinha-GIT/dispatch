@@ -11,9 +11,9 @@ import { ROUTE_COLORS } from "@/lib/routeColors";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#8b96a5",
-  offered: "#ffb020",
+  offered: "#8a6fff",
   expired: "#8b96a5",
-  assigned: "#2dd4c4",
+  assigned: "#86c400",
   delivered: "#3ddc97",
   failed: "#ff5470",
 };
@@ -25,7 +25,7 @@ function orderIcon(status: string, focused = false) {
   const ring = focused ? `box-shadow:0 0 0 5px #4f9dff88;` : pulse;
   return L.divIcon({
     className: "",
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #0a0d12;${ring}"></div>`,
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #ffffff;${ring}"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -112,10 +112,10 @@ function LocateMeControl() {
         onClick={handleLocate}
         disabled={locating}
         title={t("map.tip.locate")}
-        className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-raised text-text shadow-lg transition-colors hover:border-amber/50 disabled:opacity-50"
+        className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-surface-raised text-text shadow-lg transition-colors hover:border-brand/50 disabled:opacity-50"
       >
         {locating ? (
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber border-t-transparent" />
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand border-t-transparent" />
         ) : (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="3" />
@@ -259,7 +259,7 @@ export function RouteMap({
             position={[rider.depot_lat, rider.depot_lng]}
             icon={L.divIcon({
               className: "",
-              html: `<div style="width:16px;height:16px;border-radius:4px;background:#e8ecf1;border:2px solid #0a0d12"></div>`,
+              html: `<div style="width:16px;height:16px;border-radius:4px;background:#16141f;border:2px solid #ffffff"></div>`,
               iconSize: [16, 16],
               iconAnchor: [8, 8],
             })}

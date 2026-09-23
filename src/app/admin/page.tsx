@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PortalBar, barPill } from "@/components/PortalBar";
 import { useSweepPolling } from "@/lib/useSweepPolling";
 import { ProductsTab } from "@/components/admin/ProductsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
@@ -23,7 +24,7 @@ import {
   RoutingCard,
   type AdminRider,
 } from "@/components/admin/DispatchPanels";
-import { BoxIcon, BrandMark, CloseIcon, LifebuoyIcon, LogoutIcon, RouteIcon, UsersIcon } from "@/components/admin/icons";
+import { BoxIcon, CloseIcon, LifebuoyIcon, LogoutIcon, RouteIcon, UsersIcon } from "@/components/admin/icons";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -188,62 +189,51 @@ export default function AdminDashboard() {
     <div className="relative min-h-screen">
       <PageBackground accent="both" />
 
-      {/* Not overflow-hidden: the notification panel hangs below the header
-          and was being cut off. Only the decoration is clipped. */}
-      <header className="relative z-20 border-b border-border/60">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-          {/* A street network behind the command bar: this console exists to
-              move things across a city, and the header should say so. */}
-          <div className="admin-map-texture absolute inset-0" />
-          <div className="absolute -left-24 top-0 h-72 w-[40rem] rounded-full bg-amber/10 blur-[100px]" />
-        </div>
-
-        <div className="relative mx-auto max-w-[1600px] px-4 pt-5 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-3">
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="flex min-w-0 items-center gap-2.5 sm:gap-3"
+      <PortalBar
+        wide
+        title={
+          <span className="flex items-center gap-2">
+            <span className="hidden sm:inline">{t("admin.title")}</span>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                live ? "bg-success/15 text-success" : "bg-surface-raised text-text-dim"
+              }`}
             >
-              <BrandMark />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2.5">
-                  <h1 className="truncate font-display text-base font-semibold tracking-tight sm:text-xl">{t("admin.title")}</h1>
-                  <span
-                    className={`hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:inline-flex ${
-                      live ? "bg-success/15 text-success" : "bg-surface-raised text-text-dim"
-                    }`}
-                  >
-                    <span className="relative flex h-1.5 w-1.5">
-                      {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />}
-                      <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-success" : "bg-text-dim"}`} />
-                    </span>
-                    {live ? t("admin.live") : t("admin.connecting")}
-                  </span>
-                </div>
-                <p className="hidden truncate text-xs text-text-dim sm:block">{t("admin.tagline")}</p>
-              </div>
-            </motion.div>
+              <span className="relative flex h-1.5 w-1.5">
+                {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />}
+                <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-success" : "bg-text-dim"}`} />
+              </span>
+              {live ? t("admin.live") : t("admin.connecting")}
+            </span>
+          </span>
+        }
+      >
+        <LanguageToggle className="hidden sm:flex" />
+        <ThemeToggle className="hidden sm:flex" />
+        {profileId && <NotificationBell profileId={profileId} accent="brand" />}
+        <button onClick={handleSignOut} aria-label={t("admin.signOut")} className={`${barPill} flex items-center gap-2`}>
+          <LogoutIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">{t("admin.signOut")}</span>
+        </button>
+      </PortalBar>
 
-            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-              <LanguageToggle />
-              <ThemeToggle />
-              {profileId && <NotificationBell profileId={profileId} accent="amber" />}
-              <button
-                onClick={handleSignOut}
-                aria-label={t("admin.signOut")}
-                className="flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-raised/80 px-2.5 text-sm text-text-dim backdrop-blur transition-colors hover:border-amber/50 hover:text-text sm:px-3"
-              >
-                <LogoutIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("admin.signOut")}</span>
-              </button>
-            </div>
-          </div>
+      <section className="mx-auto max-w-[1600px] px-2.5 pt-2.5 sm:px-4 sm:pt-4">
+        <div className="sheet-wash px-5 pb-4 pt-7 sm:px-10 sm:pb-5 sm:pt-10">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <p className="flex items-center gap-2 text-sm text-text-dim">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+              {t("admin.tagline")}
+            </p>
+            <h1 className="mt-2 font-display text-4xl font-light tracking-[-0.045em] sm:text-6xl">{t("admin.title")}</h1>
+          </motion.div>
 
           <PipelineStrip orders={orders} ridersOnline={riders.length} />
 
-          <nav className="-mb-px mt-6 flex gap-1 overflow-x-auto [scrollbar-width:none]" role="tablist">
+          <nav className="mt-6 flex gap-1 overflow-x-auto rounded-full bg-surface/70 p-1 [scrollbar-width:none] sm:inline-flex" role="tablist">
             {tabs.map((item) => {
               const active = tab === item.key;
               return (
@@ -252,32 +242,32 @@ export default function AdminDashboard() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setTab(item.key)}
-                  className={`relative flex shrink-0 items-center gap-2 px-3.5 pb-3.5 pt-2 text-sm font-medium transition-colors ${
-                    active ? "text-text" : "text-text-dim hover:text-text"
+                  className={`relative flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                    active ? "text-white dark:text-ink" : "text-text-dim hover:text-text"
                   }`}
                 >
-                  <span className={active ? "text-amber" : ""}>{item.icon}</span>
-                  {item.label}
-                  {!!item.badge && (
-                    <span className="rounded-full bg-amber px-1.5 py-px text-[10px] font-bold tabular-nums text-bg">{item.badge}</span>
-                  )}
                   {active && (
                     <motion.span
-                      layoutId="admin-tab-underline"
-                      className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-amber shadow-[0_0_12px] shadow-amber/70"
+                      layoutId="admin-tab-pill"
+                      className="absolute inset-0 rounded-full bg-ink dark:bg-white"
                       transition={{ type: "spring", stiffness: 420, damping: 34 }}
                     />
+                  )}
+                  <span className="relative">{item.icon}</span>
+                  <span className="relative">{item.label}</span>
+                  {!!item.badge && (
+                    <span className="relative rounded-full bg-lime px-1.5 py-px text-[10px] font-semibold tabular-nums text-ink">{item.badge}</span>
                   )}
                 </button>
               );
             })}
           </nav>
         </div>
-      </header>
+      </section>
 
       {/* z-0 makes this its own stacking context, so the map's panes and controls
           (z-index up to 1000) stay beneath the header and its dropdowns. */}
-      <main className="relative z-0 mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="relative z-0 mx-auto max-w-[1600px] px-2.5 py-3 sm:px-4 sm:py-4">
         {/* Keyed rather than wrapped in AnimatePresence: with React 19 an
             exit animation can wait forever for a signal that never comes and
             leave the old tab on screen. An entrance alone cannot deadlock. */}

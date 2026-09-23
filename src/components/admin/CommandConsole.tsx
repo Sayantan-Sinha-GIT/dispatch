@@ -102,13 +102,13 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
       {/* A slow-moving gradient edge marks this as the console's primary control. */}
       <motion.span
         aria-hidden
-        className="absolute inset-[-40%] bg-[conic-gradient(from_0deg,transparent_0deg,var(--amber)_60deg,transparent_120deg,var(--cyan)_220deg,transparent_280deg)] opacity-60"
+        className="absolute inset-[-40%] bg-[conic-gradient(from_0deg,transparent_0deg,var(--brand)_60deg,transparent_120deg,var(--zest)_220deg,transparent_280deg)] opacity-60"
         animate={{ rotate: 360 }}
         transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
       />
       <div className="surface-raised-soft relative rounded-[15px] bg-surface p-5">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber/15 text-amber">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/15 text-brand">
             <SparkIcon className="h-4 w-4" />
           </span>
           <h2 className="font-display text-sm font-semibold">{t("admin.console.title")}</h2>
@@ -119,8 +119,8 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
         <p className="mt-2 text-xs leading-relaxed text-text-dim">{t("admin.console.subtitle")}</p>
 
         <form onSubmit={run} className="mt-4">
-          <div className="relative rounded-xl bg-bg/60 ring-1 ring-border/80 transition-shadow focus-within:shadow-[0_0_0_4px] focus-within:shadow-amber/10 focus-within:ring-amber/70">
-            <span className="pointer-events-none absolute left-3 top-2.5 font-mono text-sm text-amber">›</span>
+          <div className="relative rounded-xl bg-bg/60 ring-1 ring-border/80 transition-shadow focus-within:shadow-[0_0_0_4px] focus-within:shadow-brand/10 focus-within:ring-brand/70">
+            <span className="pointer-events-none absolute left-3 top-2.5 font-mono text-sm text-brand">›</span>
             <textarea
               value={command}
               onChange={(e) => setCommand(e.target.value)}
@@ -137,7 +137,7 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
                 whileTap={{ scale: 0.96 }}
                 type="submit"
                 disabled={running || !command.trim()}
-                className="flex items-center gap-1.5 rounded-lg bg-amber px-3.5 py-1.5 text-xs font-bold text-bg shadow-[0_6px_20px_-8px] shadow-amber transition-opacity disabled:opacity-40 disabled:shadow-none"
+                className="flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-bold text-bg shadow-[0_6px_20px_-8px] shadow-brand transition-opacity disabled:opacity-40 disabled:shadow-none"
               >
                 {running && <span className="h-3 w-3 animate-spin rounded-full border-2 border-bg border-t-transparent" />}
                 {running ? t("admin.console.running") : t("admin.console.run")}
@@ -154,7 +154,7 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
             <button
               key={ex}
               onClick={() => setCommand(ex)}
-              className="rounded-full bg-surface-raised px-2.5 py-1 text-[11px] text-text-dim ring-1 ring-border/70 transition-colors hover:text-amber hover:ring-amber/50"
+              className="rounded-full bg-surface-raised px-2.5 py-1 text-[11px] text-text-dim ring-1 ring-border/70 transition-colors hover:text-brand hover:ring-brand/50"
             >
               {ex}
             </button>
@@ -169,7 +169,7 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             className="mt-3 flex gap-2 rounded-xl bg-surface-raised px-3 py-2.5 text-xs leading-relaxed"
           >
-            <span className="mt-0.5 text-amber">
+            <span className="mt-0.5 text-brand">
               <SparkIcon className="h-3.5 w-3.5" />
             </span>
             <span className="text-text">{reply}</span>
@@ -234,7 +234,7 @@ export function CommandConsole({ onChanged }: { onChanged: () => void }) {
         )}
 
         {rejected.length > 0 && (
-          <div className="mt-2 rounded-lg bg-amber/10 px-3 py-2 text-[11px] text-amber">
+          <div className="mt-2 rounded-lg bg-brand/10 px-3 py-2 text-[11px] text-brand">
             {t("admin.console.rejected")}: {rejected.join("; ")}
           </div>
         )}
