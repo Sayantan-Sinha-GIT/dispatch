@@ -552,7 +552,7 @@ function ConsolePreview() {
         <p className="text-sm text-white/60">{t("preview.title")}</p>
         <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 font-mono text-[10px] text-white/70">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-lime" />
-          live
+          {t("admin.live")}
         </span>
       </div>
       <div className="mt-4 grid flex-1 gap-3 sm:grid-cols-[1fr_1.1fr]">
