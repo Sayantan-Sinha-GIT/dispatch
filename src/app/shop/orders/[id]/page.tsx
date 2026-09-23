@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { useLanguage } from "@/components/LanguageProvider";
+import { SignOutButton } from "@/components/SignOutButton";
 import { PortalBar } from "@/components/PortalBar";
 import { CancelWindow } from "@/components/shop/CancelWindow";
 import { SupportSheet } from "@/components/shop/SupportSheet";
@@ -156,7 +157,9 @@ export default function ShopOrderTrackingPage({ params }: { params: Promise<{ id
       <AmbientBackground accent={accent} />
       <AnimatePresence>{justDelivered && <Confetti />}</AnimatePresence>
 
-      <PortalBar back="/shop/orders" />
+      <PortalBar back="/shop/orders">
+        <SignOutButton role="customer" />
+      </PortalBar>
 
       <div className="mx-auto max-w-xl px-4 pt-8 sm:pt-12">
           <p className="text-xs text-text-dim">

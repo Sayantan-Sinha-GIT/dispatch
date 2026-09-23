@@ -10,6 +10,7 @@ import { cartSubtotal, clearCart, setQty } from "@/lib/cart";
 import { useCart } from "@/lib/browserState";
 import { LocationPickerModal } from "@/components/LocationPickerModal";
 import { useLanguage } from "@/components/LanguageProvider";
+import { SignOutButton } from "@/components/SignOutButton";
 import { PortalBar } from "@/components/PortalBar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -157,7 +158,9 @@ export default function ShopCartPage() {
   return (
     <div className="relative min-h-screen pb-32">
       <PageBackground accent="brand" />
-      <PortalBar back="/shop" />
+      <PortalBar back="/shop">
+        <SignOutButton role="customer" />
+      </PortalBar>
 
       <main className="mx-auto max-w-xl space-y-5 px-4 pb-5 pt-8 sm:pt-12">
         <h1 className="font-display text-4xl font-light tracking-[-0.045em] sm:text-5xl">{t("cart.title")}</h1>

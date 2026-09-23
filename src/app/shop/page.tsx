@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageBackground } from "@/components/PageBackground";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { addToCart, cartCount, cartSubtotal } from "@/lib/cart";
 import { useCart } from "@/lib/browserState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { SignOutButton } from "@/components/SignOutButton";
 import { PortalBar, barPill } from "@/components/PortalBar";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -31,7 +31,6 @@ const CATEGORY_IMAGE: Record<string, string> = {
 type Product = Tables<"products">;
 
 export default function ShopCatalogPage() {
-  const router = useRouter();
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const cart = useCart();
@@ -73,12 +72,6 @@ export default function ShopCatalogPage() {
   // The open detail sheet follows the live row, so its stock stays current.
   const viewingLive = viewing ? (products.find((p) => p.id === viewing.id) ?? viewing) : null;
 
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login?role=customer");
-    router.refresh();
-  }
 
   const categories = useMemo(() => ["All", ...new Set(products.map((p) => p.category))], [products]);
   const filtered = products.filter(
@@ -102,9 +95,7 @@ export default function ShopCatalogPage() {
         <Link href="/shop/orders" className={barPill}>
           {t("shop.myOrders")}
         </Link>
-        <button onClick={handleSignOut} className={`${barPill} hidden sm:block`}>
-          {t("shop.signOut")}
-        </button>
+        <SignOutButton role="customer" />
       </PortalBar>
 
       <section className="mx-auto max-w-[1400px] px-2.5 pt-2.5 sm:px-4 sm:pt-4">

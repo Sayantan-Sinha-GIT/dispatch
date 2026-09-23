@@ -45,8 +45,7 @@ export function AuthShell({
           className="relative isolate flex min-h-[13rem] flex-col justify-between overflow-hidden rounded-[2rem] p-5 text-white sm:p-8 lg:min-h-0 lg:rounded-[2.6rem] lg:p-10"
         >
           <Image src={PHOTO[role]} alt="" fill priority sizes="(max-width: 1024px) 100vw, 55vw" className="-z-20 object-cover" />
-          <div className="absolute inset-0 -z-10 bg-[#a08cff]/70 mix-blend-color" />
-          <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(24,14,70,0.45),rgba(14,9,36,0.85))]" />
+          <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.4),rgba(0,0,0,0.05)_40%,rgba(0,0,0,0.8))]" />
 
           <div className="flex items-center justify-between gap-3">
             <Link href="/" aria-label="Dispatch">

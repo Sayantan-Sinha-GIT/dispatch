@@ -181,10 +181,10 @@ function Hero() {
             <img src="/images/landing/hero.webp" alt="" fetchPriority="high" className="h-full w-full object-cover" />
           </picture>
         </motion.div>
-        {/* The night photograph, turned violet: a colour layer carries the
-            palette, and a vertical wash keeps the centred copy readable. */}
-        <div className="absolute inset-0 -z-10 bg-[#a08cff]/70 mix-blend-color" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(24,14,70,0.55)_0%,rgba(90,60,220,0.18)_42%,rgba(14,9,36,0.82)_100%)]" />
+        {/* The photograph keeps its own colours. A neutral wash, darker at the
+            edges and behind the headline, is all the copy needs to stay legible. */}
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0.12)_40%,rgba(0,0,0,0.78)_100%)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(55%_45%_at_50%_42%,rgba(0,0,0,0.38),transparent)]" />
 
         <svg className="pointer-events-none absolute inset-0 -z-10 h-full w-full" viewBox="0 0 1200 800" preserveAspectRatio="none" aria-hidden>
           <motion.path
@@ -215,7 +215,7 @@ function Hero() {
             {[t("hero.title1"), t("hero.title2"), t("hero.title3")].map((line, i) => (
               <span key={i} className="block overflow-hidden pb-[0.06em]">
                 <motion.span
-                  className={`block ${i === 1 ? "text-[#d9d0ff]" : ""}`}
+                  className={`block ${i === 1 ? "text-white/70" : ""}`}
                   initial={{ y: "110%" }}
                   animate={{ y: 0 }}
                   transition={{ duration: 0.95, ease: EASE, delay: 0.15 + i * 0.1 }}
@@ -380,7 +380,6 @@ function Portals() {
                         </div>
                         <div className="relative aspect-[4/3] overflow-hidden rounded-3xl">
                           <Image src={role.image} alt="" fill sizes="260px" className="object-cover" />
-                          <div className="absolute inset-0 bg-[#a08cff]/45 mix-blend-color" />
                         </div>
                       </div>
                     </motion.div>
@@ -605,8 +604,7 @@ function FinalCta() {
       <Reveal>
         <div className="relative isolate flex min-h-[26rem] flex-col items-center justify-center overflow-hidden rounded-[2rem] px-6 py-16 text-center text-white sm:min-h-[32rem] sm:rounded-[2.6rem]">
           <Image src="/images/landing/rider.webp" alt="" fill sizes="(max-width: 1400px) 100vw, 1400px" className="-z-20 object-cover" />
-          <div className="absolute inset-0 -z-10 bg-[#a08cff]/70 mix-blend-color" />
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(70%_70%_at_50%_50%,rgba(20,12,56,0.35),rgba(14,9,36,0.8))]" />
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(70%_70%_at_50%_50%,rgba(0,0,0,0.35),rgba(0,0,0,0.78))]" />
           <h2 className="max-w-2xl font-display text-4xl font-light leading-[1.05] tracking-[-0.04em] sm:text-6xl">{t("cta.title")}</h2>
           <p className="mt-4 max-w-md text-sm text-white/70 sm:text-base">{t("cta.subtitle")}</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">

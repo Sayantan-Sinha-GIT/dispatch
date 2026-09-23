@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
-import { PortalBar, barPill } from "@/components/PortalBar";
+import { SignOutButton } from "@/components/SignOutButton";
+import { PortalBar } from "@/components/PortalBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
@@ -25,7 +25,6 @@ type Rider = Tables<"riders">;
 
 
 export default function RiderDashboard() {
-  const router = useRouter();
   const supabase = createClient();
   const { t, lang } = useLanguage();
 
@@ -116,11 +115,6 @@ export default function RiderDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider?.id, rider?.status]);
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/login?role=rider");
-    router.refresh();
-  }
 
   async function toggleStatus() {
     if (!rider) return;
@@ -255,9 +249,7 @@ export default function RiderDashboard() {
         <LanguageToggle className="hidden sm:flex" />
         <ThemeToggle className="hidden sm:flex" />
         {profileId && <NotificationBell profileId={profileId} accent="zest" />}
-        <button onClick={handleSignOut} className={barPill}>
-          {t("rider.signOut")}
-        </button>
+        <SignOutButton role="rider" />
       </PortalBar>
 
       {/* The rider's cockpit: an ink sheet, as in the reference's "why us"

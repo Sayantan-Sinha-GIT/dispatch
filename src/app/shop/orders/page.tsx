@@ -7,6 +7,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/LanguageProvider";
+import { SignOutButton } from "@/components/SignOutButton";
 import { PortalBar } from "@/components/PortalBar";
 import { formatDateTime } from "@/lib/datetime";
 import { isActiveOrder } from "@/lib/orderStatus";
@@ -76,6 +77,7 @@ export default function ShopOrdersPage() {
             })}
           </span>
         )}
+        <SignOutButton role="customer" />
       </PortalBar>
 
       <main className="mx-auto max-w-xl space-y-2.5 px-4 pb-5 pt-8 sm:pt-12">

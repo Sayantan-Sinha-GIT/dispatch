@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { RouteMapClient } from "@/components/RouteMapClient";
 import { NotificationBell } from "@/components/NotificationBell";
-import { PortalBar, barPill } from "@/components/PortalBar";
+import { SignOutButton } from "@/components/SignOutButton";
+import { PortalBar } from "@/components/PortalBar";
 import { useSweepPolling } from "@/lib/useSweepPolling";
 import { ProductsTab } from "@/components/admin/ProductsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
@@ -24,7 +24,7 @@ import {
   RoutingCard,
   type AdminRider,
 } from "@/components/admin/DispatchPanels";
-import { BoxIcon, CloseIcon, LifebuoyIcon, LogoutIcon, RouteIcon, UsersIcon } from "@/components/admin/icons";
+import { BoxIcon, CloseIcon, LifebuoyIcon, RouteIcon, UsersIcon } from "@/components/admin/icons";
 import type { Tables } from "@/lib/supabase/types";
 
 type Order = Tables<"orders">;
@@ -33,7 +33,6 @@ type Notification = Tables<"notifications">;
 type Tab = "dispatch" | "products" | "users" | "support";
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const supabase = createClient();
   const { t } = useLanguage();
 
@@ -121,11 +120,6 @@ export default function AdminDashboard() {
     [allRiders, t],
   );
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/login?role=admin");
-    router.refresh();
-  }
 
   async function handleDeleteOrder(orderId: string) {
     if (confirmDeleteId !== orderId) {
@@ -211,10 +205,7 @@ export default function AdminDashboard() {
         <LanguageToggle className="hidden sm:flex" />
         <ThemeToggle className="hidden sm:flex" />
         {profileId && <NotificationBell profileId={profileId} accent="brand" />}
-        <button onClick={handleSignOut} aria-label={t("admin.signOut")} className={`${barPill} flex items-center gap-2`}>
-          <LogoutIcon className="h-4 w-4" />
-          <span className="hidden sm:inline">{t("admin.signOut")}</span>
-        </button>
+        <SignOutButton role="admin" />
       </PortalBar>
 
       <section className="mx-auto max-w-[1600px] px-2.5 pt-2.5 sm:px-4 sm:pt-4">
