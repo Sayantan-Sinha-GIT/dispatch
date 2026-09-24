@@ -142,21 +142,23 @@ export async function searchPlaces(q: string, near: Point | null, useOla = true)
 
 type OlaComponent = { long_name?: string; types?: string[] };
 
-async function olaReverse(p: Point, key: string): Promise<PlaceAddress | null> {
+type OlaArea = { neighborhood?: string; sublocality?: string; city?: string; postcode?: string };
+
+/**
+ * Ola answers a point with the shops and offices around it, each carrying the
+ * area it sits in. The area names are the useful part (Ola knows "BG Press
+ * Colony, Behala" where OpenStreetMap often has only the city); the nearest
+ * shop's name is not an address, so it is not used as one.
+ */
+async function olaArea(p: Point, key: string): Promise<OlaArea | null> {
   const params = new URLSearchParams({ latlng: `${p.lat},${p.lng}`, api_key: key });
   const json = (await getJson(`${OLA}/reverse-geocode?${params}`, { "X-Request-Id": crypto.randomUUID() })) as {
-    results?: { formatted_address?: string; address_components?: OlaComponent[] }[];
+    results?: { address_components?: OlaComponent[] }[];
   };
-  const best = json.results?.[0];
-  if (!best?.formatted_address) return null;
-  const find = (...types: string[]) =>
-    best.address_components?.find((c) => c.types?.some((t) => types.includes(t)))?.long_name || undefined;
-  return {
-    houseNo: find("street_number", "premise"),
-    street: find("route"),
-    locality: find("sublocality", "sublocality_level_1", "neighborhood", "locality"),
-    displayName: best.formatted_address,
-  };
+  const comps = json.results?.[0]?.address_components;
+  if (!comps?.length) return null;
+  const find = (t: string) => comps.find((c) => c.types?.includes(t))?.long_name || undefined;
+  return { neighborhood: find("neighborhood"), sublocality: find("sublocality"), city: find("locality"), postcode: find("postal_code") };
 }
 
 async function nominatimReverse(p: Point): Promise<PlaceAddress | null> {
@@ -174,20 +176,44 @@ async function nominatimReverse(p: Point): Promise<PlaceAddress | null> {
   };
 }
 
+/**
+ * The address under a pin. With Ola configured, both services are asked at
+ * once: OpenStreetMap for the road and house number, Ola for the
+ * neighbourhood and area names Indian addresses are really given by.
+ */
 export async function reverseGeocode(p: Point, useOla = true): Promise<PlaceAddress | null> {
   const key = useOla ? olaKey() : undefined;
-  if (key) {
-    try {
-      const result = await olaReverse(p, key);
-      if (result) return result;
-    } catch (e) {
-      console.error("[places] Ola reverse geocode failed, using OpenStreetMap:", (e as Error).message);
-    }
-  }
-  try {
-    return await nominatimReverse(p);
-  } catch (e) {
-    console.error("[places] Nominatim reverse failed:", (e as Error).message);
-    return null;
-  }
+  const [osm, ola] = await Promise.all([
+    nominatimReverse(p).catch((e) => {
+      console.error("[places] Nominatim reverse failed:", (e as Error).message);
+      return null;
+    }),
+    key
+      ? olaArea(p, key).catch((e) => {
+          console.error("[places] Ola reverse failed:", (e as Error).message);
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+  if (!ola) return osm;
+
+  const street = osm?.street;
+  const areaParts = [ola.neighborhood, ola.sublocality].filter((x): x is string => !!x);
+  const cityLine = [ola.city, ola.postcode].filter(Boolean).join(" ");
+  const seen = new Set<string>();
+  const displayName = [osm?.houseNo && street ? `${osm.houseNo}, ${street}` : street, ...areaParts, cityLine]
+    .filter((x): x is string => !!x)
+    .filter((x) => {
+      const k = x.toLowerCase().replace(/\s+/g, "");
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .join(", ");
+  return {
+    houseNo: osm?.houseNo,
+    street: street || ola.neighborhood,
+    locality: ola.sublocality || ola.neighborhood || osm?.locality,
+    displayName: displayName || osm?.displayName || "",
+  };
 }
