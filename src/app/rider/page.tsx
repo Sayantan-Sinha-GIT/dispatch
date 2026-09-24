@@ -239,7 +239,7 @@ export default function RiderDashboard() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-full bg-danger px-4 py-2 text-sm font-medium text-white shadow-lg"
+            className="fixed left-1/2 top-[calc(var(--safe-top)+1rem)] z-50 -translate-x-1/2 rounded-full bg-danger px-4 py-2 text-sm font-medium text-white shadow-lg"
           >
             {errorMsg}
           </motion.div>

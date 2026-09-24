@@ -33,7 +33,7 @@ export function DeliverConfirm({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 p-4 pb-[calc(var(--safe-bottom)+1rem)] backdrop-blur-sm sm:items-center"
       onClick={onCancel}
     >
       <motion.div

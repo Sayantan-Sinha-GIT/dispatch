@@ -60,7 +60,7 @@ export function OfferModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.18 } }}
-      className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/70 pb-[var(--safe-bottom)] backdrop-blur-sm sm:items-center"
     >
       <motion.div
         initial={{ y: "100%", opacity: 0, scale: 0.98 }}

@@ -132,7 +132,7 @@ export function SupportSheet({ orderId }: { orderId?: string | null }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+            className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 pb-[var(--safe-bottom)] backdrop-blur-sm sm:items-center"
           >
             <motion.div
               initial={{ y: "100%", opacity: 0 }}

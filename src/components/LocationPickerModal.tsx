@@ -156,7 +156,7 @@ export function LocationPickerModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[2000] flex flex-col bg-bg"
+        className="fixed inset-0 z-[2000] flex flex-col bg-bg pb-[var(--safe-bottom)] pt-[var(--safe-top)]"
       >
         <div className="relative flex-grow overflow-hidden">
           <LocationPickerMap initialLat={initialLat} initialLng={initialLng} onChange={handleCenterChange} flyToSignal={flyTo} />

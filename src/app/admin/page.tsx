@@ -354,7 +354,7 @@ export default function AdminDashboard() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10 }}
             role="status"
-            className={`fixed inset-x-4 bottom-5 z-[1100] mx-auto flex max-w-md items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:mx-0 ${
+            className={`fixed inset-x-4 bottom-[calc(var(--safe-bottom)+1.25rem)] z-[1100] mx-auto flex max-w-md items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:mx-0 ${
               message.tone === "ok"
                 ? "border-success/30 bg-surface/95 text-text"
                 : "border-danger/40 bg-surface/95 text-text"

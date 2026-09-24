@@ -264,7 +264,7 @@ export default function ShopCatalogPage() {
             initial={{ y: 80 }}
             animate={{ y: 0 }}
             exit={{ y: 80 }}
-            className="fixed inset-x-0 bottom-0 border-t border-border bg-surface/95 p-4 backdrop-blur"
+            className="fixed inset-x-0 bottom-0 border-t border-border bg-surface/95 p-4 pb-[calc(var(--safe-bottom)+1rem)] backdrop-blur"
           >
             <Link
               href="/shop/cart"
@@ -289,7 +289,7 @@ export default function ShopCatalogPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setViewing(null)}
-            className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+            className="fixed inset-0 z-[1500] flex items-end justify-center bg-black/60 pb-[var(--safe-bottom)] backdrop-blur-sm sm:items-center"
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}

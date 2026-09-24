@@ -90,6 +90,42 @@ body {
   font-family: var(--font-body);
 }
 
+/*
+ * Phone edges. The page is laid out edge to edge (viewport-fit=cover), so on
+ * a phone that draws the site behind its status and navigation bars - the
+ * Android app on a current WebView, or an iPhone - content has to keep clear
+ * of them itself. Everywhere else these are 0 and change nothing.
+ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+/* A full-height screen is the visible area between the bars, not the whole glass. */
+.min-h-screen {
+  min-height: calc(100vh - var(--safe-top) - var(--safe-bottom));
+}
+
+/*
+ * The strip behind the status bar is solid page colour, so a scrolled page
+ * never runs underneath the clock and icons. Below the pop-up sheets (1500+),
+ * which dim it along with everything else, as native sheets do.
+ */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--safe-top);
+  background: var(--bg);
+  z-index: 1400;
+  pointer-events: none;
+}
+
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;

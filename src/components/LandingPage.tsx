@@ -117,7 +117,7 @@ function Nav() {
       initial={{ y: -40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.7, ease: EASE }}
-      className="fixed inset-x-0 top-3 z-50 px-4 sm:top-6 sm:px-8"
+      className="fixed inset-x-0 top-[calc(var(--safe-top)+0.75rem)] z-50 px-4 sm:top-[calc(var(--safe-top)+1.5rem)] sm:px-8"
     >
       <div
         className={`mx-auto flex max-w-[1340px] items-center justify-between gap-3 rounded-full py-2 pl-2.5 pr-2 transition-all duration-500 ${

@@ -24,7 +24,7 @@ export function PortalBar({
 }) {
   const { t } = useLanguage();
   return (
-    <header className="sticky top-0 z-30 px-2.5 pt-2.5 sm:px-4 sm:pt-4">
+    <header className="sticky top-[var(--safe-top)] z-30 px-2.5 pt-2.5 sm:px-4 sm:pt-4">
       <div className={`glass mx-auto flex ${wide ? "max-w-[1600px]" : "max-w-[1400px]"} items-center justify-between gap-3 rounded-full p-1.5 shadow-[0_18px_40px_-26px_rgba(40,24,110,0.5)] ring-1 ring-border/70`}>
         <div className="flex min-w-0 items-center gap-2.5">
           {back ? (

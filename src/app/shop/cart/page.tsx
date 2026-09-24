@@ -286,7 +286,7 @@ export default function ShopCartPage() {
       </main>
 
       {cart.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 px-2.5 pb-2.5 sm:px-4 sm:pb-4">
+        <div className="fixed inset-x-0 bottom-0 px-2.5 pb-[calc(var(--safe-bottom)+0.625rem)] sm:px-4 sm:pb-[calc(var(--safe-bottom)+1rem)]">
           <div className="glass mx-auto max-w-xl rounded-[1.8rem] p-2.5 shadow-[0_18px_40px_-20px_rgba(40,24,110,0.45)] ring-1 ring-border/70">
           <motion.button
             whileTap={{ scale: 0.98 }}
