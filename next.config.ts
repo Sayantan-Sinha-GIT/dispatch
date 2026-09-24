@@ -1,7 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Ask Chrome for its view of the connection on every request after the
+  // first, so the server can send Data Saver pages to slow phones up front.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "Accept-CH", value: "ECT, Downlink, Save-Data" }],
+      },
+    ];
+  },
   images: {
+    // 35 is Data Saver's compressed product photo (src/lib/dataSaver.ts).
+    qualities: [35, 75],
     // Product photographs uploaded from the admin console live in Supabase
     // Storage. Only that project's public bucket is allowed, so the image
     // optimiser can't be pointed at arbitrary hosts.

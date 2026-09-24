@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { SignOutButton } from "@/components/SignOutButton";
 import { PortalBar } from "@/components/PortalBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DataSaverToggle } from "@/components/DataSaverToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { OfferModal } from "@/components/rider/OfferModal";
@@ -248,6 +249,7 @@ export default function RiderDashboard() {
 
       <PortalBar>
         <LanguageToggle className="hidden sm:flex" />
+        <DataSaverToggle />
         <ThemeToggle className="hidden sm:flex" />
         {profileId && <NotificationBell profileId={profileId} accent="zest" />}
         <SignOutButton role="rider" />

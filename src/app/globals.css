@@ -30,7 +30,7 @@
   --success: #45dca0;
   --wash: #221b3d;
 
-  --font-display: var(--font-onest);
+  --font-display: var(--font-bricolage), var(--font-onest);
   --font-body: var(--font-onest);
   --font-mono: var(--font-jetbrains-mono);
 }
@@ -373,4 +373,40 @@ body {
 }
 :root:not([data-theme="light"]) .card-soft {
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 20px 46px -30px rgb(0 0 0 / 0.8);
+}
+
+
+/* ---- Data Saver ---------------------------------------------------------
+ * Set on <html data-saver="on"> (see src/lib/dataSaver.ts). Photographs are
+ * swapped for drawn artwork in the components themselves; this takes away the
+ * rest of the weight: looping animation, the drifting colour fields and the
+ * glass blur, which costs slow phones the most to draw. Spinners keep turning
+ * so waiting still looks like waiting.
+ */
+[data-saver] *,
+[data-saver] *::before,
+[data-saver] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+[data-saver] .animate-spin {
+  animation-duration: 0.9s !important;
+  animation-iteration-count: infinite !important;
+}
+[data-saver] .animate-pulse {
+  animation: none !important;
+}
+[data-saver] .field-blob,
+[data-saver] .grain {
+  display: none !important;
+}
+[data-saver] .glass,
+[data-saver] [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+[data-saver] .glass {
+  background: var(--surface) !important;
 }

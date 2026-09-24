@@ -10,6 +10,9 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/components/LanguageProvider";
 import { Logo, LogoMark } from "@/components/Brand";
 import { PageBackground } from "@/components/PageBackground";
+import { useDataSaver } from "@/components/DataSaverProvider";
+import { DataSaverToggle } from "@/components/DataSaverToggle";
+import { SaverArt } from "@/components/SaverArt";
 
 /*
  * The landing page is a stack of sheets floating on the lavender field: a
@@ -124,8 +127,14 @@ function Nav() {
           scrolled ? "glass shadow-[0_18px_40px_-24px_rgba(40,24,110,0.45)] ring-1 ring-border/60" : ""
         }`}
       >
-        <Link href="/" aria-label="Dispatch">
-          <Logo light={!scrolled} markClassName="h-9 w-9" />
+        {/* On a narrow phone the wordmark gives way to the controls; the mark stays. */}
+        <Link href="/" aria-label="Dispatch" className="shrink-0">
+          <span className="min-[400px]:hidden">
+            <LogoMark className="h-9 w-9" />
+          </span>
+          <span className="hidden min-[400px]:inline">
+            <Logo light={!scrolled} markClassName="h-9 w-9" />
+          </span>
         </Link>
         <div
           className={`hidden items-center gap-1 rounded-full p-1 md:flex ${
@@ -146,10 +155,11 @@ function Nav() {
         </div>
         <div className="flex items-center gap-1.5">
           <LanguageToggle />
+          <DataSaverToggle />
           <ThemeToggle />
           <Link
             href="/login"
-            className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5"
+            className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5"
           >
             {t("nav.signIn")}
           </Link>
@@ -161,6 +171,7 @@ function Nav() {
 
 function Hero() {
   const { t } = useLanguage();
+  const { on: lite } = useDataSaver();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "14%"]);
@@ -174,12 +185,16 @@ function Hero() {
         className="relative isolate flex min-h-[calc(100svh-1.25rem)] flex-col overflow-hidden rounded-[2rem] bg-ink text-white sm:min-h-[calc(100svh-2rem)] sm:rounded-[2.6rem]"
       >
         <motion.div style={{ y: imageY, scale: imageScale }} className="absolute inset-0 -z-20">
-          {/* Two framings rather than one crop: on a phone the wide photo puts
-              the rider directly behind the headline. */}
-          <picture>
-            <source media="(max-width: 700px)" srcSet="/images/landing/hero-mobile.webp" />
-            <img src="/images/landing/hero.webp" alt="" fetchPriority="high" className="h-full w-full object-cover" />
-          </picture>
+          {lite ? (
+            <SaverArt variant="hero" />
+          ) : (
+            /* Two framings rather than one crop: on a phone the wide photo puts
+               the rider directly behind the headline. */
+            <picture>
+              <source media="(max-width: 700px)" srcSet="/images/landing/hero-mobile.webp" />
+              <img src="/images/landing/hero.webp" alt="" fetchPriority="high" className="h-full w-full object-cover" />
+            </picture>
+          )}
         </motion.div>
         {/* The photograph keeps its own colours. A neutral wash, darker at the
             edges and behind the headline, is all the copy needs to stay legible. */}
@@ -317,6 +332,7 @@ function About() {
 
 function Portals() {
   const { t } = useLanguage();
+  const { on: lite } = useDataSaver();
   const [open, setOpen] = useState(0);
   return (
     <section id="roles" className={`${WRAP} mt-3 scroll-mt-24 sm:mt-4`}>
@@ -379,7 +395,11 @@ function Portals() {
                           </DotButton>
                         </div>
                         <div className="relative aspect-[4/3] overflow-hidden rounded-3xl">
-                          <Image src={role.image} alt="" fill sizes="260px" className="object-cover" />
+                          {lite ? (
+                            <SaverArt variant={role.key as "customer" | "rider" | "admin"} />
+                          ) : (
+                            <Image src={role.image} alt="" fill sizes="260px" className="object-cover" />
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -396,10 +416,11 @@ function Portals() {
 
 function HowItWorks() {
   const { t } = useLanguage();
+  const { on: lite } = useDataSaver();
   return (
     <section id="how-it-works" className={`${WRAP} mt-3 scroll-mt-24 sm:mt-4`}>
       <div className="sheet-ink relative isolate overflow-hidden px-6 py-10 sm:px-12 sm:py-14">
-        <Image src="/images/landing/how-it-works.webp" alt="" fill sizes="100vw" className="-z-10 object-cover opacity-30" />
+        {!lite && <Image src="/images/landing/how-it-works.webp" alt="" fill sizes="100vw" className="-z-10 object-cover opacity-30" />}
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(90%_70%_at_85%_0%,rgba(122,92,255,0.35),transparent_60%),linear-gradient(180deg,rgba(12,10,18,0.55),#0c0a12_75%)]" />
 
         <div className="grid gap-6 md:grid-cols-[0.34fr_1fr]">
@@ -599,11 +620,16 @@ function ConsolePreview() {
 
 function FinalCta() {
   const { t } = useLanguage();
+  const { on: lite } = useDataSaver();
   return (
     <section className={`${WRAP} mt-3 sm:mt-4`}>
       <Reveal>
         <div className="relative isolate flex min-h-[26rem] flex-col items-center justify-center overflow-hidden rounded-[2rem] px-6 py-16 text-center text-white sm:min-h-[32rem] sm:rounded-[2.6rem]">
-          <Image src="/images/landing/rider.webp" alt="" fill sizes="(max-width: 1400px) 100vw, 1400px" className="-z-20 object-cover" />
+          {lite ? (
+            <SaverArt variant="rider" className="-z-20" />
+          ) : (
+            <Image src="/images/landing/rider.webp" alt="" fill sizes="(max-width: 1400px) 100vw, 1400px" className="-z-20 object-cover" />
+          )}
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(70%_70%_at_50%_50%,rgba(0,0,0,0.35),rgba(0,0,0,0.78))]" />
           <h2 className="max-w-2xl font-display text-4xl font-light leading-[1.05] tracking-[-0.04em] sm:text-6xl">{t("cta.title")}</h2>
           <p className="mt-4 max-w-md text-sm text-white/70 sm:text-base">{t("cta.subtitle")}</p>

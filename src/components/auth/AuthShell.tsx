@@ -7,6 +7,9 @@ import { Logo } from "@/components/Brand";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthBackground } from "@/components/AuthBackground";
+import { useDataSaver } from "@/components/DataSaverProvider";
+import { DataSaverToggle } from "@/components/DataSaverToggle";
+import { SaverArt } from "@/components/SaverArt";
 
 const PHOTO = {
   customer: "/images/landing/customer.webp",
@@ -32,6 +35,7 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   const accent = role === "rider" ? "zest" : "brand";
+  const { on: lite } = useDataSaver();
   return (
     <div className="relative flex min-h-screen flex-col p-2.5 sm:p-4">
       <AuthBackground accent={accent} />
@@ -44,7 +48,11 @@ export function AuthShell({
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="relative isolate flex min-h-[13rem] flex-col justify-between overflow-hidden rounded-[2rem] p-5 text-white sm:p-8 lg:min-h-0 lg:rounded-[2.6rem] lg:p-10"
         >
-          <Image src={PHOTO[role]} alt="" fill priority sizes="(max-width: 1024px) 100vw, 55vw" className="-z-20 object-cover" />
+          {lite ? (
+            <SaverArt variant={role} className="-z-20" />
+          ) : (
+            <Image src={PHOTO[role]} alt="" fill priority sizes="(max-width: 1024px) 100vw, 55vw" className="-z-20 object-cover" />
+          )}
           <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.4),rgba(0,0,0,0.05)_40%,rgba(0,0,0,0.8))]" />
 
           <div className="flex items-center justify-between gap-3">
@@ -52,6 +60,7 @@ export function AuthShell({
               <Logo light />
             </Link>
             <div className="flex gap-1.5 lg:hidden">
+              <DataSaverToggle />
               <LanguageToggle />
               <ThemeToggle />
             </div>
@@ -65,6 +74,7 @@ export function AuthShell({
 
         <main className="sheet relative flex flex-col px-5 py-7 sm:px-10 sm:py-10 lg:rounded-[2.6rem]">
           <div className="hidden justify-end gap-1.5 lg:flex">
+            <DataSaverToggle />
             <LanguageToggle />
             <ThemeToggle />
           </div>

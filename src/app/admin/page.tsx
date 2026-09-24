@@ -12,6 +12,7 @@ import { ProductsTab } from "@/components/admin/ProductsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { SupportTab } from "@/components/admin/SupportTab";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DataSaverToggle } from "@/components/DataSaverToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageBackground } from "@/components/PageBackground";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -203,6 +204,7 @@ export default function AdminDashboard() {
         }
       >
         <LanguageToggle className="hidden sm:flex" />
+        <DataSaverToggle />
         <ThemeToggle className="hidden sm:flex" />
         {profileId && <NotificationBell profileId={profileId} accent="brand" />}
         <SignOutButton role="admin" />

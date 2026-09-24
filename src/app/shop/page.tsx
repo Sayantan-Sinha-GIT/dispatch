@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addToCart, cartCount, cartSubtotal } from "@/lib/cart";
 import { useCart } from "@/lib/browserState";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DataSaverToggle } from "@/components/DataSaverToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SignOutButton } from "@/components/SignOutButton";
 import { PortalBar, barPill } from "@/components/PortalBar";
@@ -90,6 +91,7 @@ export default function ShopCatalogPage() {
       <PageBackground accent="brand" grid={false} />
       <PortalBar>
         <LanguageToggle className="hidden sm:flex" />
+        <DataSaverToggle />
         <ThemeToggle className="hidden sm:flex" />
         {profileId && <NotificationBell profileId={profileId} accent="brand" />}
         <Link href="/shop/orders" className={barPill}>

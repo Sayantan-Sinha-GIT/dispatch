@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useDataSaver } from "@/components/DataSaverProvider";
 
 type Tint = "brand" | "zest" | "both" | "success";
 
@@ -43,6 +44,7 @@ export function Field({
   imageOpacity?: number;
   fixed?: boolean;
 }) {
+  const { on: lite } = useDataSaver();
   const second =
     tint === "zest" ? "bg-lime/25 dark:bg-lime/10" : tint === "success" ? "bg-success/20 dark:bg-success/10" : "bg-[#9ec1ff]/45 dark:bg-[#5b7cff]/15";
 
@@ -50,7 +52,7 @@ export function Field({
     <div className={`pointer-events-none ${fixed ? "fixed" : "absolute"} inset-0 -z-10 overflow-hidden`} aria-hidden>
       <div className="absolute inset-0 bg-bg" />
 
-      {image && (
+      {image && !lite && (
         <Image
           src={image}
           alt=""
