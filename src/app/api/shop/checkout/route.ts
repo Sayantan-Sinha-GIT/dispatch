@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runDispatchTick } from "@/lib/dispatch";
@@ -109,7 +109,14 @@ export async function POST(request: NextRequest) {
   // Every assignment goes through the routing engine, including this one: the
   // tick re-plans the whole pending pool with the new order in it rather than
   // grabbing whichever rider happens to be nearest to it alone.
-  await runDispatchTick(admin);
+  //
+  // It runs just after the response: the order is already saved, and the
+  // customer's tracking screen follows the offer live, so there is no reason
+  // to hold them on "Placing..." for the seconds a full re-plan takes. The
+  // offer sweep re-runs dispatch anyway if this ever doesn't complete.
+  after(() =>
+    runDispatchTick(admin).catch((e) => console.error("dispatch after checkout failed", e)),
+  );
 
   return NextResponse.json({ orderId: order.id });
 }
