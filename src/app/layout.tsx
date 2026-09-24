@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Onest, JetBrains_Mono } from "next/font/google";
 import { LanguageProvider } from "@/components/LanguageProvider";
-import { NativeBackButton } from "@/components/NativeBackButton";
+import { NativeShell } from "@/components/NativeShell";
 import "./globals.css";
 
 // One family for headings and text, as in the reference designs: light
@@ -66,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col bg-bg text-text">
         <LanguageProvider>{children}</LanguageProvider>
-        <NativeBackButton />
+        <NativeShell />
       </body>
     </html>
   );

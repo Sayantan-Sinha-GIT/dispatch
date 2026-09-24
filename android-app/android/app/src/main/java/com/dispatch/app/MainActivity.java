@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(SystemBarsPlugin.class);
         super.onCreate(savedInstanceState);
         openLink(getIntent());
     }

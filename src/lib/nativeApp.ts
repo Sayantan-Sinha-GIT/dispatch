@@ -19,8 +19,21 @@ type AppPlugin = {
 
 type CapacitorGlobal = {
   isNativePlatform?: () => boolean;
-  Plugins?: { SocialLogin?: SocialLoginPlugin; App?: AppPlugin };
+  Plugins?: {
+    SocialLogin?: SocialLoginPlugin;
+    App?: AppPlugin;
+    /** The app's own plugin (android-app/.../SystemBarsPlugin.java), from 2.0.2. */
+    DispatchBars?: { set(options: { color: string; dark: boolean }): Promise<void> };
+  };
 };
+
+/** Recolours the phone's status and navigation bar strips to match the page. */
+export function setNativeBars(theme: "dark" | "light") {
+  if (!isNativeApp()) return;
+  capacitor()
+    ?.Plugins?.DispatchBars?.set({ color: theme === "dark" ? "#0d0b14" : "#f2f0f8", dark: theme === "dark" })
+    .catch(() => {});
+}
 
 /** The app's native App plugin (back button, exit), or undefined in a browser. */
 export function nativeAppPlugin(): AppPlugin | undefined {
