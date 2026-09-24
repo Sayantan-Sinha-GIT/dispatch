@@ -9,7 +9,9 @@ with native pieces a browser cannot provide:
 - **Native Google sign-in.** The site's login page detects the app
   (`src/lib/nativeApp.ts`) and uses the phone's account sheet through
   `@capgo/capacitor-social-login` instead of Google's web pages.
-- **App Links.** Links to the site open in the app.
+- **App Links.** Links to the site open the linked page in the app.
+- **Branded splash.** Violet, logo, wordmark; stays until the site has loaded.
+- **Back button and bar colours** handled with the site (`src/components/NativeShell.tsx`).
 
 Website changes need no new APK: the app always loads the live site.
 
@@ -18,7 +20,7 @@ Website changes need no new APK: the app always loads the live site.
 Run the **Android app** workflow from the Actions tab. It signs with the same
 key as the earlier Trusted Web Activity builds (repository secrets
 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`),
-so it installs over them as an update, and uploads `Dispatch-<version>.apk`.
+so it installs over them as an update (the Bubblewrap build itself is gone), and uploads `Dispatch-<version>.apk`.
 
 Raise `versionCode` and `versionName` in `android/app/build.gradle` for every
 release.
