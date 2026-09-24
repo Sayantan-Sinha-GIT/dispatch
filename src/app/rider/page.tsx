@@ -17,6 +17,7 @@ import { LocationControl } from "@/components/rider/LocationControl";
 import { DeliverConfirm } from "@/components/rider/DeliverConfirm";
 import { formatDateTime } from "@/lib/datetime";
 import { directionsUrl, routeUrl, MAX_ROUTE_STOPS } from "@/lib/maps";
+import { openNativeAppSettings, startBackgroundLocation } from "@/lib/nativeApp";
 import { StatCounter } from "@/components/StatCounter";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useSweepPolling } from "@/lib/useSweepPolling";
@@ -97,23 +98,56 @@ export default function RiderDashboard() {
     return () => clearTimeout(t);
   }, [errorMsg]);
 
+  /*
+   * Live position while online. In the Android app it keeps going with the
+   * screen off or another app open (a location foreground service, with its
+   * ongoing notification); in a browser it only runs while the page is open.
+   * Going offline or signing out ends it - both change the status this
+   * depends on, or unmount the page.
+   */
+  const [locationDenied, setLocationDenied] = useState(false);
   useEffect(() => {
-    if (!rider || rider.status !== "active" || !("geolocation" in navigator)) return;
+    if (!rider || rider.status !== "active") return;
+    let stopped = false;
+    let stop: (() => void) | null = null;
+    let lastSent = 0;
+    const send = (lat: number, lng: number) => {
+      // At most every 10 s, however chatty the GPS is.
+      if (Date.now() - lastSent < 10_000) return;
+      lastSent = Date.now();
+      supabase.rpc("update_my_location", { lat, lng });
+    };
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        supabase.rpc("update_my_location", {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
+    startBackgroundLocation(
+      { title: t("rider.bgloc.title"), message: t("rider.bgloc.message") },
+      (lat, lng) => {
+        setLocationDenied(false);
+        send(lat, lng);
       },
-      () => {
-        // permission denied or unavailable — live tracking just stays off
-      },
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 },
-    );
+      () => setLocationDenied(true),
+    )
+      .then((stopNative) => {
+        if (stopNative) {
+          if (stopped) stopNative();
+          else stop = stopNative;
+          return;
+        }
+        if (stopped || !("geolocation" in navigator)) return;
+        const watchId = navigator.geolocation.watchPosition(
+          (pos) => send(pos.coords.latitude, pos.coords.longitude),
+          () => {
+            // permission denied or unavailable - live tracking just stays off
+          },
+          { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 },
+        );
+        stop = () => navigator.geolocation.clearWatch(watchId);
+      })
+      .catch(() => {});
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    return () => {
+      stopped = true;
+      stop?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider?.id, rider?.status]);
 
@@ -359,6 +393,18 @@ export default function RiderDashboard() {
       )}
 
       <div className="mx-4 mt-4 space-y-3">
+        {locationDenied && isActive && (
+          <div className="flex items-center gap-3 rounded-2xl bg-danger/10 p-3.5 text-sm text-danger ring-1 ring-danger/25">
+            <p className="min-w-0 flex-1 leading-snug">{t("rider.bgloc.denied")}</p>
+            <button
+              type="button"
+              onClick={openNativeAppSettings}
+              className="shrink-0 rounded-full bg-danger px-3.5 py-2 text-xs font-semibold text-white"
+            >
+              {t("rider.bgloc.openSettings")}
+            </button>
+          </div>
+        )}
         {rider && <LocationControl rider={rider} onChanged={loadData} />}
       </div>
 

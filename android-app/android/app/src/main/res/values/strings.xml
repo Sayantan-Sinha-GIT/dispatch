@@ -4,4 +4,10 @@
     <string name="title_activity_main">Dispatch</string>
     <string name="package_name">com.dispatch.app</string>
     <string name="custom_url_scheme">com.dispatch.app</string>
+    <!-- Background location for riders who are online (community
+         background-geolocation plugin): the ongoing notification's channel,
+         icon and colour. -->
+    <string name="capacitor_background_geolocation_notification_channel_name">Location while online</string>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_stat_dispatch</string>
+    <string name="capacitor_background_geolocation_notification_color">#6B4EF0</string>
 </resources>

@@ -29,9 +29,22 @@ type PushPlugin = {
   addListener(event: "pushNotificationActionPerformed", cb: (a: { notification: { data?: Record<string, string> } }) => void): Listener;
 };
 
+type BgLocation = { latitude: number; longitude: number; accuracy: number; time: number | null };
+
+type BackgroundGeolocationPlugin = {
+  addWatcher(
+    options: { backgroundMessage?: string; backgroundTitle?: string; requestPermissions?: boolean; stale?: boolean; distanceFilter?: number },
+    callback: (location?: BgLocation, error?: { code?: string; message?: string }) => void,
+  ): Promise<string>;
+  removeWatcher(options: { id: string }): Promise<void>;
+  openSettings(): Promise<void>;
+};
+
 type CapacitorGlobal = {
   isNativePlatform?: () => boolean;
   Plugins?: {
+    /** @capacitor-community/background-geolocation, from app 2.3.0. */
+    BackgroundGeolocation?: BackgroundGeolocationPlugin;
     SocialLogin?: SocialLoginPlugin;
     App?: AppPlugin;
     /** @capacitor/push-notifications, from app 2.2.0. */
@@ -47,6 +60,44 @@ export function setNativeBars(theme: "dark" | "light") {
   capacitor()
     ?.Plugins?.DispatchBars?.set({ color: theme === "dark" ? "#0d0b14" : "#f2f0f8", dark: theme === "dark" })
     .catch(() => {});
+}
+
+/**
+ * Keeps a rider's position flowing while they are online, even with the
+ * screen off or another app in front: Android runs it as a location
+ * foreground service, which is why it shows an ongoing notification (Android
+ * requires one, and it also tells the rider plainly that they are being
+ * tracked). Returns a stop function, or null when this app build has no
+ * background tracker - the caller then falls back to the browser's own
+ * location watch, which only works while the app is open.
+ */
+export async function startBackgroundLocation(
+  texts: { title: string; message: string },
+  onFix: (lat: number, lng: number) => void,
+  onDenied: () => void,
+): Promise<(() => void) | null> {
+  const bg = isNativeApp() ? capacitor()?.Plugins?.BackgroundGeolocation : undefined;
+  if (!bg) return null;
+  const id = await bg.addWatcher(
+    // 25 m between fixes: enough to follow a scooter street by street without
+    // waking the radio for every step.
+    { backgroundTitle: texts.title, backgroundMessage: texts.message, requestPermissions: true, stale: false, distanceFilter: 25 },
+    (location, error) => {
+      if (error) {
+        if (error.code === "NOT_AUTHORIZED") onDenied();
+        return;
+      }
+      if (location) onFix(location.latitude, location.longitude);
+    },
+  );
+  return () => {
+    bg.removeWatcher({ id }).catch(() => {});
+  };
+}
+
+/** Opens Android's settings for this app, e.g. to turn location back on. */
+export function openNativeAppSettings() {
+  capacitor()?.Plugins?.BackgroundGeolocation?.openSettings().catch(() => {});
 }
 
 const PUSH_TOKEN_KEY = "push-token";
