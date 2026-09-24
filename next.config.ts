@@ -1,13 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Ask Chrome for its view of the connection on every request after the
-  // first, so the server can send Data Saver pages to slow phones up front.
+  // Ask Chrome for its view of the connection with every request, so the
+  // server can send Data Saver pages to slow phones up front.
   async headers() {
     return [
       {
         source: "/:path*",
-        headers: [{ key: "Accept-CH", value: "ECT, Downlink, Save-Data" }],
+        headers: [
+          { key: "Accept-CH", value: "ECT, Downlink, Save-Data" },
+          // On a first visit Chrome hasn't been asked yet; this makes it retry
+          // once with the hints, so even the very first page can be light.
+          { key: "Critical-CH", value: "ECT, Save-Data" },
+        ],
       },
     ];
   },

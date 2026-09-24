@@ -76,6 +76,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             __html: `try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}`,
           }}
         />
+        {/* Data Saver's first look at the connection, before anything else
+            loads: lightens this page at once (the React side takes over after)
+            and tells the server, via a cookie, for every page after it. Mirrors
+            isSlow() in src/lib/dataSaver.ts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var c=navigator.connection;if(c){var s=!!c.saveData||/^(slow-2g|2g|3g)$/.test(c.effectiveType||'')||(c.downlink>0&&c.downlink<1);document.cookie='saver-net='+(s?'slow':'fast')+';path=/;max-age=31536000;samesite=lax';var m=(document.cookie.match(/(?:^|; )saver=(on|off)/)||[])[1]||'auto';if(m==='on'||(m==='auto'&&s))document.documentElement.setAttribute('data-saver','on');}}catch(e){}`,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-bg text-text">
         <LanguageProvider>
