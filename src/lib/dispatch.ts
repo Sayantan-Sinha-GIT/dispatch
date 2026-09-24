@@ -392,6 +392,9 @@ export async function reassignOrExpire(
           "Rider penalized",
           `${result.rider_name ?? "A rider"} was suspended after ${PENALTY_THRESHOLD} missed deliveries.`,
         );
+        // Anything else still waiting on them would only time out too, one
+        // five-minute wait (and one more "miss") at a time. Hand it on now.
+        await reassignRiderPendingOffers(admin, missedRiderId);
       } else {
         await notify(
           admin,

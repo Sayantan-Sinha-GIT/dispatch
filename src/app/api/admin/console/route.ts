@@ -5,6 +5,7 @@ import {
   cancelOrderAsAdmin,
   forceAssignOrderToRider,
   pullOrderFromRider,
+  reassignRiderPendingOffers,
   runDispatchTick,
   SUSPENSION_MINUTES,
 } from "@/lib/dispatch";
@@ -170,6 +171,8 @@ async function executeAction(
         .update({ suspended_until: until })
         .eq("id", action.riderId!);
       if (error) return { ok: false, message: error.message };
+      // Their unaccepted offers go to someone who can take them now.
+      await reassignRiderPendingOffers(admin, action.riderId!);
 
       if (rider?.profile_id) {
         await admin.from("notifications").insert({
