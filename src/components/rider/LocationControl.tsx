@@ -50,6 +50,24 @@ export function LocationControl({ rider, onChanged }: { rider: Rider; onChanged:
   const originLat = liveFresh ? rider.current_lat! : rider.depot_lat;
   const originLng = liveFresh ? rider.current_lng! : rider.depot_lng;
 
+  // Name the point in words; coordinates are for machines. Rounded so a GPS
+  // fix drifting by a few metres doesn't trigger a new lookup every time.
+  const [placeName, setPlaceName] = useState<string | null>(null);
+  const keyLat = originLat.toFixed(3);
+  const keyLng = originLng.toFixed(3);
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/places/reverse?lat=${keyLat}&lng=${keyLng}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { address?: { displayName?: string } } | null) => {
+        if (live) setPlaceName(j?.address?.displayName || null);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [keyLat, keyLng]);
+
   function flash(kind: "ok" | "err", text: string) {
     setFeedback({ kind, text });
     setTimeout(() => setFeedback(null), 4000);
@@ -108,8 +126,8 @@ export function LocationControl({ rider, onChanged }: { rider: Rider; onChanged:
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-text-dim">{t("rider.loc.title")}</p>
-            <p className="mt-0.5 truncate font-mono text-sm text-text">
-              {originLat.toFixed(4)}, {originLng.toFixed(4)}
+            <p className="mt-0.5 line-clamp-2 text-sm leading-snug text-text">
+              {placeName ?? <span className="text-text-dim">{t("picker.findingAddress")}</span>}
             </p>
             <p className="mt-0.5 text-[11px] text-text-dim">
               {liveFresh ? t("rider.loc.fromGps") : t("rider.loc.fromBase")}
