@@ -241,7 +241,7 @@ function UnifiedLogin() {
       setLoading(false);
       return;
     }
-    router.push(destination);
+    router.replace(destination);
     router.refresh();
   }
 
@@ -294,7 +294,7 @@ function UnifiedLogin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: "customer" }),
       });
-      router.push("/shop");
+      router.replace("/shop");
       router.refresh();
       return;
     }
@@ -330,7 +330,7 @@ function UnifiedLogin() {
       body: JSON.stringify({ intent: role === "rider" ? "rider" : "customer" }),
     });
     setLoading(false);
-    router.push(role === "rider" ? "/rider" : "/shop");
+    router.replace(role === "rider" ? "/rider" : "/shop");
     router.refresh();
   }
 

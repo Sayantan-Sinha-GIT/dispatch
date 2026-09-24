@@ -19,7 +19,7 @@ export function SignOutButton({ role }: { role: "customer" | "rider" | "admin" }
   async function signOut() {
     setBusy(true);
     await createClient().auth.signOut();
-    router.push(`/login?role=${role}`);
+    router.replace(`/login?role=${role}`);
     router.refresh();
   }
 

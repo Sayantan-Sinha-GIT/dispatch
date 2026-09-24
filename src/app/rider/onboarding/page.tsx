@@ -63,7 +63,7 @@ export default function RiderOnboardingPage() {
       setLoading(false);
       return;
     }
-    router.push("/rider");
+    router.replace("/rider");
     router.refresh();
   }
 

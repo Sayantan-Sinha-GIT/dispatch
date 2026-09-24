@@ -97,7 +97,7 @@ export default function RiderSignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: "rider" }),
       });
-      router.push("/rider");
+      router.replace("/rider");
       router.refresh();
       return;
     }
@@ -139,7 +139,7 @@ export default function RiderSignupPage() {
       body: JSON.stringify({ intent: "rider" }),
     });
     setVerifying(false);
-    router.push("/rider");
+    router.replace("/rider");
     router.refresh();
   }
 
