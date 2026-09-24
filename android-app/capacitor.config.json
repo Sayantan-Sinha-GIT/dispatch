@@ -22,7 +22,8 @@
     },
     "SystemBars": {
       "insetsHandling": "native",
-      "style": "LIGHT"
+      "style": "LIGHT",
+      "initialViewportFitValueHint": "cover"
     }
   }
 }

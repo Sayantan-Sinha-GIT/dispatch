@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.animation.PathInterpolator;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
@@ -72,19 +73,38 @@ public class MainActivity extends BridgeActivity {
         addContentView(splash, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         splashShowing = true;
         splashShownAt = SystemClock.uptimeMillis();
-        SystemBarsPlugin.applySplash(this);
+        // Capacitor queues its own bar styling for right after start-up; queue
+        // ours behind it so the splash keeps violet bars with light icons.
+        main.post(() -> {
+            if (splashShowing) SystemBarsPlugin.applySplash(this);
+        });
 
-        float dp = getResources().getDisplayMetrics().density;
-        PathInterpolator ease = new PathInterpolator(0.16f, 1f, 0.3f, 1f);
-        View glyph = splash.findViewById(R.id.splash_glyph);
-        View wordmark = splash.findViewById(R.id.splash_wordmark);
-        View footer = splash.findViewById(R.id.splash_footer);
-        wordmark.setTranslationY(110 * dp);
-        glyph.animate().translationY(-62 * dp).setStartDelay(120).setDuration(650).setInterpolator(ease).start();
-        wordmark.animate().alpha(1f).translationY(72 * dp).setStartDelay(220).setDuration(650).setInterpolator(ease).start();
-        footer.animate().alpha(1f).setStartDelay(420).setDuration(500).start();
+        // Animate from the first frame actually drawn: until then Android's own
+        // splash still covers the app, and the motion would play unseen.
+        View root = splash;
+        root.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                root.getViewTreeObserver().removeOnPreDrawListener(this);
+                splashShownAt = SystemClock.uptimeMillis();
+                animateSplash(root);
+                return true;
+            }
+        });
 
         main.postDelayed(this::hideSplash, MAX_SPLASH_MS);
+    }
+
+    private void animateSplash(View root) {
+        float dp = getResources().getDisplayMetrics().density;
+        PathInterpolator ease = new PathInterpolator(0.16f, 1f, 0.3f, 1f);
+        View glyph = root.findViewById(R.id.splash_glyph);
+        View wordmark = root.findViewById(R.id.splash_wordmark);
+        View footer = root.findViewById(R.id.splash_footer);
+        wordmark.setTranslationY(110 * dp);
+        glyph.animate().translationY(-62 * dp).setStartDelay(150).setDuration(650).setInterpolator(ease).start();
+        wordmark.animate().alpha(1f).translationY(72 * dp).setStartDelay(250).setDuration(650).setInterpolator(ease).start();
+        footer.animate().alpha(1f).setStartDelay(450).setDuration(500).start();
     }
 
     private void hideSplash() {
