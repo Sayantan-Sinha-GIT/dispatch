@@ -115,7 +115,11 @@ export default function RiderDashboard() {
       // At most every 10 s, however chatty the GPS is.
       if (Date.now() - lastSent < 10_000) return;
       lastSent = Date.now();
-      supabase.rpc("update_my_location", { lat, lng });
+      // Supabase queries are lazy: nothing is sent until the result is taken.
+      // A bare rpc() here (as the old watch had it) never reached the server.
+      supabase.rpc("update_my_location", { lat, lng }).then(({ error }) => {
+        if (error) console.error("update_my_location failed", error.message);
+      });
     };
 
     startBackgroundLocation(
