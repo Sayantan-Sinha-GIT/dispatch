@@ -20,11 +20,15 @@
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 
-    <!-- Launch: the logo on the lavender field while the site loads. -->
+    <!-- Launch: the logo on brand violet (Android 12+ splash API, and the
+         launch window's background before that), with light bar icons. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/field</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/colorPrimary</item>
+        <item name="windowSplashScreenBackground">@color/splash</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_glyph</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:statusBarColor">@color/splash</item>
+        <item name="android:navigationBarColor">@color/splash</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

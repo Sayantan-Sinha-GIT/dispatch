@@ -5,4 +5,5 @@
     <color name="colorPrimaryDark">#F2F0F8</color>
     <color name="colorAccent">#6B4EF0</color>
     <color name="field">#F2F0F8</color>
+    <color name="splash">#6B4EF0</color>
 </resources>

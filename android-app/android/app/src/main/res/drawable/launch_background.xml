@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Before Android 12 there is no splash API: the launch window's background
+     is the splash, drawn the same as the Android 12+ one. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash" />
+    <item android:gravity="center" android:drawable="@drawable/splash_glyph" />
+</layer-list>

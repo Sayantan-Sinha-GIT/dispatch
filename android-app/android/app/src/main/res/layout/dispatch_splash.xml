@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The opening screen shown over the web view until the site has loaded.
+     The logo sits exactly where Android's own splash icon was, so the hand-off
+     from the system splash is invisible; MainActivity then lifts it and fades
+     the wordmark in beneath it. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/splash"
+    android:clickable="true"
+    android:focusable="true">
+
+    <ImageView
+        android:id="@+id/splash_glyph"
+        android:layout_width="288dp"
+        android:layout_height="288dp"
+        android:layout_gravity="center"
+        android:contentDescription="@null"
+        android:src="@drawable/splash_glyph" />
+
+    <ImageView
+        android:id="@+id/splash_wordmark"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:adjustViewBounds="true"
+        android:alpha="0"
+        android:contentDescription="Dispatch"
+        android:src="@drawable/splash_wordmark" />
+
+    <ImageView
+        android:id="@+id/splash_footer"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="56dp"
+        android:adjustViewBounds="true"
+        android:alpha="0"
+        android:contentDescription="@null"
+        android:src="@drawable/splash_footer" />
+</FrameLayout>
