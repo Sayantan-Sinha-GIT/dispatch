@@ -15,6 +15,7 @@ import { OfferModal } from "@/components/rider/OfferModal";
 import { LocationControl } from "@/components/rider/LocationControl";
 import { DeliverConfirm } from "@/components/rider/DeliverConfirm";
 import { formatDateTime } from "@/lib/datetime";
+import { directionsUrl, routeUrl, MAX_ROUTE_STOPS } from "@/lib/maps";
 import { StatCounter } from "@/components/StatCounter";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useSweepPolling } from "@/lib/useSweepPolling";
@@ -398,6 +399,21 @@ export default function RiderDashboard() {
           </span>
         </div>
 
+        {/* With several stops, the whole run in its planned order in one tap. */}
+        {remaining.length > 1 && (
+          <a
+            href={routeUrl(remaining)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-medium text-white ring-1 ring-white/10 transition-transform active:scale-[0.98] dark:bg-surface-raised"
+          >
+            <NavigateIcon className="h-4 w-4 text-lime" />
+            {remaining.length > MAX_ROUTE_STOPS
+              ? t("rider.fullRouteFirst", { count: MAX_ROUTE_STOPS })
+              : t("rider.fullRoute", { count: remaining.length })}
+          </a>
+        )}
+
         {remaining.map((order, idx) => (
           <motion.div
             key={order.id}
@@ -405,31 +421,46 @@ export default function RiderDashboard() {
             animate={{ opacity: 1, x: 0 }}
             whileHover={{ y: -2 }}
             transition={{ delay: idx * 0.05 }}
-            className="flex items-center gap-3 rounded-2xl card-soft border border-transparent bg-surface p-4 shadow-lg shadow-black/10 transition-colors hover:border-zest/30"
+            className="rounded-2xl card-soft border border-transparent bg-surface p-4 shadow-lg shadow-black/10 transition-colors hover:border-zest/30"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/20 font-display text-sm font-semibold text-brand">
-              {(order.sequence_in_route ?? idx) + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{order.address}</p>
-              <p className="text-xs text-text-dim">
-                {order.weight} {t("common.kg")} · ₹{Math.round(Number(order.payout_amount ?? 0))} ·{" "}
-                {order.payout_distance_km ?? 0} {t("common.km")}
-              </p>
-              <p className="mt-0.5 text-[11px] text-text-dim">
-                {t("rider.placedAt", { when: formatDateTime(order.created_at, lang) })}
-              </p>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/20 font-display text-sm font-semibold text-brand">
+                {(order.sequence_in_route ?? idx) + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                {/* The full address, not a truncated one: it is what the rider
+                    reads at the door. */}
+                <p className="text-sm font-medium leading-snug">{order.address}</p>
+                <p className="mt-0.5 text-xs text-text-dim">
+                  {order.weight} {t("common.kg")} · ₹{Math.round(Number(order.payout_amount ?? 0))} ·{" "}
+                  {order.payout_distance_km ?? 0} {t("common.km")}
+                </p>
+                <p className="mt-0.5 text-[11px] text-text-dim">
+                  {t("rider.placedAt", { when: formatDateTime(order.created_at, lang) })}
+                </p>
+              </div>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setDeliverError(null);
-                setDeliveringOrder(order);
-              }}
-              className="shrink-0 rounded-xl bg-success/20 px-3.5 py-2.5 text-xs font-semibold text-success"
-            >
-              {t("rider.deliveredBtn")}
-            </motion.button>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <a
+                href={directionsUrl(order)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 rounded-full bg-lime px-3.5 py-2.5 text-sm font-semibold text-ink transition-transform active:scale-95"
+              >
+                <NavigateIcon className="h-4 w-4" />
+                {t("rider.navigate")}
+              </a>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setDeliverError(null);
+                  setDeliveringOrder(order);
+                }}
+                className="rounded-full bg-success/15 px-3.5 py-2.5 text-sm font-semibold text-success"
+              >
+                {t("rider.deliveredBtn")}
+              </motion.button>
+            </div>
           </motion.div>
         ))}
 
@@ -508,5 +539,12 @@ function RiderStat({
       </span>
       <p className="mt-1 text-[11px] text-white/50 sm:text-xs">{label}</p>
     </div>
+  );
+}
+function NavigateIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M21.7 2.3a1 1 0 0 0-1.06-.23l-18 7a1 1 0 0 0 .08 1.9l7.6 2.1 2.1 7.6a1 1 0 0 0 .92.73h.04a1 1 0 0 0 .93-.64l7-18a1 1 0 0 0-.23-1.06Z" />
+    </svg>
   );
 }
