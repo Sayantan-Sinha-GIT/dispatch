@@ -122,6 +122,9 @@ export async function searchPlaces(q: string, near: Point | null, useOla = true)
   if (key) {
     try {
       const results = await olaSearch(q, near, key);
+      // Ola ranks by name; several Indian businesses share one. As on Google
+      // Maps, the one near where the person is looking should come first.
+      if (near) results.sort((a, b) => (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity));
       if (results.length > 0) return results.slice(0, 8);
     } catch (e) {
       console.error("[places] Ola search failed, using OpenStreetMap:", (e as Error).message);

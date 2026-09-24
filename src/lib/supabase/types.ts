@@ -377,6 +377,27 @@ export type Database = {
         }
         Relationships: []
       }
+      push_tokens: {
+        Row: {
+          platform: string
+          profile_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          platform?: string
+          profile_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          platform?: string
+          profile_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       riders: {
         Row: {
           capacity: number

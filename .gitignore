@@ -53,3 +53,8 @@ next-env.d.ts
 # public/images as ~3.5MB of WebP. Git keeps every version of a binary
 # forever, so the originals stay local; the optimised output is what ships.
 /Images_X
+
+# Firebase: the service-account key is a secret (it lives in Vercel as
+# FIREBASE_SERVICE_ACCOUNT); google-services.json is injected by CI.
+*firebase-adminsdk*.json
+google-services.json

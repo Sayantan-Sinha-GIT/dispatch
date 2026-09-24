@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { disableNativePush } from "@/lib/nativeApp";
 import { useLanguage } from "@/components/LanguageProvider";
 import { LogoutIcon } from "@/components/admin/icons";
 
@@ -31,6 +32,8 @@ export function SignOutButton({ role }: { role: "customer" | "rider" | "admin" }
         // signing out anyway
       }
     }
+    // This phone should stop buzzing for the account that just left.
+    await disableNativePush();
     await supabase.auth.signOut();
     router.replace(`/login?role=${role}`);
     router.refresh();

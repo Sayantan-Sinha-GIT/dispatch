@@ -17,11 +17,25 @@ type AppPlugin = {
   exitApp(): Promise<void>;
 };
 
+type Listener = Promise<{ remove(): Promise<void> }>;
+
+type PushPlugin = {
+  checkPermissions(): Promise<{ receive: string }>;
+  requestPermissions(): Promise<{ receive: string }>;
+  register(): Promise<void>;
+  createChannel(c: { id: string; name: string; description?: string; importance: number; visibility?: number; vibration?: boolean }): Promise<void>;
+  addListener(event: "registration", cb: (t: { value: string }) => void): Listener;
+  addListener(event: "registrationError", cb: (e: { error: string }) => void): Listener;
+  addListener(event: "pushNotificationActionPerformed", cb: (a: { notification: { data?: Record<string, string> } }) => void): Listener;
+};
+
 type CapacitorGlobal = {
   isNativePlatform?: () => boolean;
   Plugins?: {
     SocialLogin?: SocialLoginPlugin;
     App?: AppPlugin;
+    /** @capacitor/push-notifications, from app 2.2.0. */
+    PushNotifications?: PushPlugin;
     /** The app's own plugin (android-app/.../SystemBarsPlugin.java), from 2.0.2. */
     DispatchBars?: { set(options: { color: string; dark: boolean }): Promise<void> };
   };
@@ -33,6 +47,65 @@ export function setNativeBars(theme: "dark" | "light") {
   capacitor()
     ?.Plugins?.DispatchBars?.set({ color: theme === "dark" ? "#0d0b14" : "#f2f0f8", dark: theme === "dark" })
     .catch(() => {});
+}
+
+const PUSH_TOKEN_KEY = "push-token";
+
+/**
+ * Turns on push notifications for the signed-in person on this phone: asks
+ * permission once (Android 13+), sets up the two channels, and hands the
+ * phone's token to the server. `onOpen` receives the screen to show when a
+ * notification is tapped. Returns a cleanup for the listeners.
+ */
+export async function enableNativePush(onOpen: (url: string) => void): Promise<() => void> {
+  const push = isNativeApp() ? capacitor()?.Plugins?.PushNotifications : undefined;
+  if (!push) return () => {};
+  const handles: Awaited<Listener>[] = [];
+  handles.push(
+    await push.addListener("registration", ({ value }) => {
+      try {
+        localStorage.setItem(PUSH_TOKEN_KEY, value);
+      } catch {
+        // only needed to unregister on sign-out
+      }
+      fetch("/api/push/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: value }),
+      }).catch(() => {});
+    }),
+    await push.addListener("pushNotificationActionPerformed", ({ notification }) => {
+      const url = notification.data?.url;
+      if (url && url.startsWith("/")) onOpen(url);
+    }),
+  );
+  let perm = await push.checkPermissions();
+  if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") perm = await push.requestPermissions();
+  if (perm.receive === "granted") {
+    // Offers ring and pop up over whatever the rider is doing; the rest are ordinary.
+    await push.createChannel({ id: "offers", name: "Delivery offers", description: "New deliveries you can accept", importance: 5, visibility: 1, vibration: true });
+    await push.createChannel({ id: "updates", name: "Order updates", description: "Your orders, support replies and account news", importance: 3, visibility: 1 });
+    await push.register();
+  }
+  return () => handles.forEach((h) => h.remove());
+}
+
+/** Stops notifications for the account signing out on this phone. */
+export async function disableNativePush(): Promise<void> {
+  if (!isNativeApp()) return;
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem(PUSH_TOKEN_KEY);
+  } catch {
+    return;
+  }
+  if (!token) return;
+  await fetch("/api/push/register", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    signal: AbortSignal.timeout(4000),
+  }).catch(() => {});
 }
 
 /** The app's native App plugin (back button, exit), or undefined in a browser. */

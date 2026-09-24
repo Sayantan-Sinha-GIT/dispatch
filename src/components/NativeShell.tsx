@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { nativeAppPlugin, setNativeBars } from "@/lib/nativeApp";
+import { enableNativePush, isNativeApp, nativeAppPlugin, setNativeBars } from "@/lib/nativeApp";
+import { createClient } from "@/lib/supabase/client";
 import { useThemeName } from "@/lib/browserState";
 
 /** Each portal's first screen, plus the two ways in. Back from here leaves the app. */
@@ -12,7 +13,8 @@ const ROOTS = new Set(["/", "/login", "/shop", "/rider", "/admin"]);
  * The website's side of the Android app. Renders nothing, and does nothing
  * outside the app.
  *
- * The status and navigation bar strips follow the light/dark theme.
+ * The status and navigation bar strips follow the light/dark theme, and
+ * push notifications are switched on for whoever is signed in.
  *
  * The back button behaves as people expect it in an app. Walking browser
  * history alone is wrong here: opening the app signed in lands on "/" and is
@@ -30,6 +32,29 @@ export function NativeShell() {
   useEffect(() => {
     setNativeBars(theme);
   }, [theme]);
+
+  // Push notifications follow the signed-in account: set up on sign-in (and
+  // on every launch while signed in, which also refreshes the token).
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let cleanup: (() => void) | null = null;
+    let armed = false;
+    const supabase = createClient();
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && !armed) {
+        armed = true;
+        enableNativePush((url) => router.push(url)).then((c) => (cleanup = c));
+      } else if (!session) {
+        armed = false;
+        cleanup?.();
+        cleanup = null;
+      }
+    });
+    return () => {
+      data.subscription.unsubscribe();
+      cleanup?.();
+    };
+  }, [router]);
 
   useEffect(() => {
     pathRef.current = pathname;
