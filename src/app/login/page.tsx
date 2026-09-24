@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { isNativeApp, nativeGoogleIdToken } from "@/lib/nativeApp";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { EyeIcon, EyeOffIcon } from "@/components/Icons";
@@ -345,9 +346,57 @@ function UnifiedLogin() {
     setResendState("sent");
   }
 
+  /**
+   * Inside the Android app, Google's web sign-in would leave the app for
+   * Google's and Supabase's pages (and Google refuses to run inside an app's
+   * web view anyway). The phone's own account sheet hands back an ID token
+   * instead, which Supabase exchanges for a session without leaving this page.
+   * Everything after that mirrors /auth/callback.
+   */
+  async function handleNativeGoogle() {
+    const intent = role === "rider" ? "rider" : "customer";
+    try {
+      const token = await nativeGoogleIdToken();
+      if (!token) return;
+      const supabase = createClient();
+      const { error: idError } = await supabase.auth.signInWithIdToken({ provider: "google", token });
+      if (idError) {
+        setError(idError.message);
+        return;
+      }
+      const res = await fetch("/api/auth/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent }),
+      });
+      const result = (await res.json()) as {
+        error?: string;
+        actualRole?: string;
+        role?: string;
+        needsRiderOnboarding?: boolean;
+      };
+      if (!res.ok || result.error) {
+        await supabase.auth.signOut();
+        setError(
+          result.error === "wrongRole" && result.actualRole
+            ? t("login.err.wrongRole", { actual: t(`login.role.${result.actualRole}`), intent: t(`login.role.${intent}`) })
+            : t(`login.err.${result.error ?? "linkInvalid"}`),
+        );
+        return;
+      }
+      router.replace(result.role === "rider" ? (result.needsRiderOnboarding ? "/rider/onboarding" : "/rider") : "/shop");
+      router.refresh();
+    } catch (e) {
+      setError((e as Error)?.message ?? String(e));
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   async function handleGoogle() {
     resetFeedback();
     setGoogleLoading(true);
+    if (isNativeApp()) return handleNativeGoogle();
     const supabase = createClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",

@@ -674,7 +674,11 @@ function Footer() {
           dispatch<span className="text-lime">.</span>
         </p>
         <div className="mt-8 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs text-white/45 sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} {t("footer.rights")}</span>
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>© {new Date().getFullYear()} {t("footer.rights")}</span>
+            <Link href="/privacy" className="transition-colors hover:text-lime">{t("footer.privacy")}</Link>
+            <Link href="/terms" className="transition-colors hover:text-lime">{t("footer.terms")}</Link>
+          </span>
           <span>{t("footer.builtBy")}</span>
         </div>
       </div>

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const result = await finalizeRole(supabase, intent);
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
+    return NextResponse.json({ error: result.error, actualRole: result.actualRole }, { status: 403 });
   }
   return NextResponse.json(result);
 }

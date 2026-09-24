@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dispatch</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f2f0f8; color: #1d1733;
+         font: 16px/1.5 system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+  button { margin-top: 16px; border: 0; border-radius: 999px; padding: 12px 22px; background: #6b4ef0; color: #fff; font: inherit; }
+</style>
+</head>
+<body>
+  <!-- Shown only if the app cannot reach the site at all. -->
+  <div>
+    <p><strong>Dispatch can't connect.</strong><br />Check your internet connection and try again.</p>
+    <button onclick="location.href='https://dispatch-delivery.vercel.app/'">Try again</button>
+  </div>
+</body>
+</html>

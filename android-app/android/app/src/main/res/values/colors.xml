@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The site's light field and brand violet. -->
+    <color name="colorPrimary">#6B4EF0</color>
+    <color name="colorPrimaryDark">#F2F0F8</color>
+    <color name="colorAccent">#6B4EF0</color>
+    <color name="field">#F2F0F8</color>
+</resources>

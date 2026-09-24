@@ -1,0 +1,16 @@
+{
+  "name": "dispatch-android",
+  "private": true,
+  "description": "The Dispatch Android app: a Capacitor shell around https://dispatch-delivery.vercel.app",
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2",
+    "@capgo/capacitor-social-login": "8.5.11"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}
