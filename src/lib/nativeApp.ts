@@ -12,10 +12,20 @@ type SocialLoginPlugin = {
   }>;
 };
 
+type AppPlugin = {
+  addListener(event: "backButton", cb: (e: { canGoBack: boolean }) => void): Promise<{ remove(): Promise<void> }>;
+  exitApp(): Promise<void>;
+};
+
 type CapacitorGlobal = {
   isNativePlatform?: () => boolean;
-  Plugins?: { SocialLogin?: SocialLoginPlugin };
+  Plugins?: { SocialLogin?: SocialLoginPlugin; App?: AppPlugin };
 };
+
+/** The app's native App plugin (back button, exit), or undefined in a browser. */
+export function nativeAppPlugin(): AppPlugin | undefined {
+  return isNativeApp() ? capacitor()?.Plugins?.App : undefined;
+}
 
 function capacitor(): CapacitorGlobal | undefined {
   if (typeof window === "undefined") return undefined;
