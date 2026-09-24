@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pullOrderFromRider } from "@/lib/dispatch";
 
 // Admin manual override for an order stuck with a rider who went dark
-// mid-delivery (offline without completing it, or simply unresponsive).
-// Unlike the automatic sweep, this always applies — regardless of current
-// status — since an admin is making a deliberate call here.
+// mid-delivery (offline without completing it, or simply unresponsive). The
+// order goes to the nearest other rider with room, or back to the pool.
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -21,35 +21,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
-  const { data: order } = await admin
-    .from("orders")
-    .select("address, status, riders(profile_id)")
-    .eq("id", id)
-    .maybeSingle();
-  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
-  const assignedProfileId = (order.riders as { profile_id?: string } | null)?.profile_id;
-
-  const { error } = await admin
-    .from("orders")
-    .update({
-      status: "pending",
-      assigned_rider_id: null,
-      sequence_in_route: null,
-      offered_at: null,
-      accepted_at: null,
-    })
-    .eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  if (assignedProfileId) {
-    await admin.from("notifications").insert({
-      profile_id: assignedProfileId,
-      type: "order_reassigned_away",
-      title: "Delivery reassigned",
-      body: `An admin pulled "${order.address}" from your queue and put it back in the pending pool.`,
-    });
+  const res = await pullOrderFromRider(admin, id);
+  if (!res.ok) {
+    return NextResponse.json({ code: res.code, error: res.error }, { status: res.code === "not_found" ? 404 : 409 });
   }
-
   return NextResponse.json({ ok: true });
 }

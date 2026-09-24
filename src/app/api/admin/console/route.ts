@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   cancelOrderAsAdmin,
   forceAssignOrderToRider,
+  pullOrderFromRider,
   runDispatchTick,
   SUSPENSION_MINUTES,
 } from "@/lib/dispatch";
@@ -114,34 +115,9 @@ async function executeAction(
     }
 
     case "reassign_order": {
-      const { data: order } = await admin
-        .from("orders")
-        .select("address, riders(profile_id)")
-        .eq("id", action.orderId!)
-        .maybeSingle();
-      const riderProfile = (order?.riders as { profile_id?: string } | null)?.profile_id;
-
-      await admin
-        .from("orders")
-        .update({
-          status: "pending",
-          assigned_rider_id: null,
-          sequence_in_route: null,
-          offered_at: null,
-          accepted_at: null,
-        })
-        .eq("id", action.orderId!);
-
-      if (riderProfile) {
-        await admin.from("notifications").insert({
-          profile_id: riderProfile,
-          type: "order_reassigned_away",
-          title: "Delivery reassigned",
-          body: `An admin pulled "${order?.address}" from your queue.`,
-        });
-      }
-      await runDispatchTick(admin);
-      return { ok: true, message: `Re-planned "${order?.address ?? "order"}".` };
+      const res = await pullOrderFromRider(admin, action.orderId!);
+      if (!res.ok) return { ok: false, message: res.error };
+      return { ok: true, message: `Moved "${res.address}" off its rider and re-planned it.` };
     }
 
     case "force_assign_order": {

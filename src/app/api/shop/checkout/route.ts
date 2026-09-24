@@ -2,6 +2,8 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runDispatchTick } from "@/lib/dispatch";
+import { haversineDistanceKm } from "@/lib/routing/haversine";
+import { isWithinServiceRange } from "@/lib/serviceArea";
 
 const DELIVERY_FEE = 25;
 
@@ -65,6 +67,21 @@ export async function POST(request: NextRequest) {
   for (const i of items) wanted.set(i.productId, (wanted.get(i.productId) ?? 0) + i.qty);
   const short = products.find((p) => p.stock_qty < (wanted.get(p.id) ?? 0));
   if (short) return stockError(short.name, short.stock_qty);
+
+  // Only take orders someone can deliver. Dispatch never sends a rider more
+  // than the service radius, so an address beyond every rider's base would
+  // sit on "finding a rider" forever with its stock locked away. Riders who
+  // are offline right now still count: they cover the area, just not yet.
+  const { data: bases } = await admin.from("riders").select("depot_lat, depot_lng");
+  const covered = (bases ?? []).some((r) =>
+    isWithinServiceRange(haversineDistanceKm({ lat: r.depot_lat, lng: r.depot_lng }, { lat, lng })),
+  );
+  if (!covered) {
+    return NextResponse.json(
+      { code: "out_of_area", error: "We don't deliver to this address yet — no rider covers it." },
+      { status: 400 },
+    );
+  }
 
   const subtotal = priced.reduce((sum, p) => sum + p.price * p.qty, 0);
   const totalWeight = priced.reduce((sum, p) => sum + p.qty, 0);

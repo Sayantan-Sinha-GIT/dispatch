@@ -447,6 +447,49 @@ export async function reassignOrExpire(
 }
 
 /**
+ * Admin override for an order stuck with a rider who went dark: takes it off
+ * them and offers it to the nearest *other* rider with room, or returns it to
+ * the pool if there is none. Only an order that is actually with a rider can
+ * be pulled; a delivered or cancelled one is left alone.
+ */
+export async function pullOrderFromRider(admin: AdminClient, orderId: string) {
+  const { data: order } = await admin
+    .from("orders")
+    .select("*, riders(profile_id)")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { ok: false as const, code: "not_found", error: "Order not found" };
+
+  // Parked in "expired" (atomically, and only from a rider's hands) so the
+  // re-offer below can claim it exactly as a timed-out offer is claimed.
+  const { data: moved } = await admin
+    .from("orders")
+    .update({ status: "expired", sequence_in_route: null, offered_at: null, accepted_at: null })
+    .eq("id", orderId)
+    .in("status", ["offered", "assigned"])
+    .select("*")
+    .maybeSingle();
+  if (!moved) return { ok: false as const, code: "not_with_rider", error: "This order isn't with a rider right now" };
+
+  const riderProfileId = (order.riders as { profile_id?: string } | null)?.profile_id;
+  if (riderProfileId) {
+    await notify(
+      admin,
+      riderProfileId,
+      "order_reassigned_away",
+      "Delivery reassigned",
+      `An admin moved "${order.address}" off your queue — no need to deliver it.`,
+    );
+  }
+  await logOrderEvent(admin, orderId, "reassigned", "admin", "Pulled from its rider by an admin");
+  await reassignOrExpire(admin, moved, {
+    penalize: false,
+    excludeRiderId: order.assigned_rider_id ?? undefined,
+  });
+  return { ok: true as const, address: order.address };
+}
+
+/**
  * Force-assigns an order to a specific rider, bypassing the optimizer. Used by
  * the admin console ("send order X to rider Y") — capacity is still enforced by
  * the claim function, so this can't silently overload someone.
@@ -530,19 +573,16 @@ export async function cancelOrderAsAdmin(admin: AdminClient, orderId: string, re
   if (!order) return { ok: false as const, error: "Order not found" };
   if (order.status === "cancelled") return { ok: false as const, error: "Order is already cancelled" };
 
-  await admin
-    .from("orders")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: "admin",
-      cancel_reason: reason ?? null,
-      assigned_rider_id: null,
-      sequence_in_route: null,
-      offered_at: null,
-      accepted_at: null,
-    })
-    .eq("id", orderId);
+  // The same guarded function as every other admin status change, so
+  // cancelling an order that was already delivered also takes back the
+  // rider's credit for it. (Its goods are not restocked: they left the store.)
+  const { data, error } = await admin.rpc("admin_set_order_status", {
+    p_order_id: orderId,
+    p_status: "cancelled",
+  });
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (error || !res?.ok) return { ok: false as const, error: error?.message ?? res?.error ?? "Could not cancel" };
+  if (reason) await admin.from("orders").update({ cancel_reason: reason }).eq("id", orderId);
 
   const riderProfileId = (order.riders as { profile_id?: string } | null)?.profile_id;
   if (riderProfileId) {
@@ -551,7 +591,9 @@ export async function cancelOrderAsAdmin(admin: AdminClient, orderId: string, re
       riderProfileId,
       "order_cancelled",
       "Delivery cancelled",
-      `"${order.address}" was cancelled by an admin — no need to deliver it.`,
+      order.status === "delivered"
+        ? `An admin cancelled "${order.address}" after delivery; its ₹${order.payout_amount ?? 0} payout was reversed.`
+        : `"${order.address}" was cancelled by an admin — no need to deliver it.`,
     );
   }
   if (order.customer_id) {
@@ -567,13 +609,7 @@ export async function cancelOrderAsAdmin(admin: AdminClient, orderId: string, re
     );
   }
 
-  await logOrderEvent(
-    admin,
-    orderId,
-    "cancelled",
-    "admin",
-    reason ? `Cancelled by admin — ${reason}` : "Cancelled by admin",
-  );
+  if (reason) await logOrderEvent(admin, orderId, "cancelled", "admin", `Cancelled by admin — ${reason}`);
 
   return { ok: true as const, address: order.address };
 }

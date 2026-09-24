@@ -141,6 +141,7 @@ export default function ShopCartPage() {
             : t("cart.err.soldOut", { name: json.name }),
         );
       }
+      if (json.code === "out_of_area") throw new Error(t("cart.err.outOfArea"));
       if (!res.ok) throw new Error(json.error ?? t("cart.err.placeFailed"));
       clearCart();
       router.push(`/shop/orders/${json.orderId}`);

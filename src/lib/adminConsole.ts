@@ -164,7 +164,7 @@ Available action kinds:
 - "create_orders": add new delivery orders. Put them in the "orders" array with address, lat, lng (best-effort real-world coordinates), weight in kg (default 1), and optional time_window_start/time_window_end as "HH:MM".
 - "cancel_order": cancel an order. Needs orderId. Optional reason.
 - "delete_order": permanently remove an order record. Needs orderId. Prefer cancel_order unless the admin explicitly says delete/remove the record.
-- "reassign_order": pull an order back to the pending pool so the optimizer re-plans it. Needs orderId.
+- "reassign_order": take an order off its current rider (stuck or unresponsive) and hand it to the nearest other rider, or back to the pending pool if none has room. Needs orderId.
 - "force_assign_order": send a specific order to a specific rider. Needs orderId AND riderId.
 - "mark_delivered": mark an order delivered. Needs orderId.
 - "set_order_status": move an order to a specific state by hand. Needs orderId and status, one of: pending, assigned, delivered, cancelled. Use this when the admin names a state explicitly ("set order X back to pending", "mark this one as not delivered", "put it back on the road"). "not delivered" / "never arrived" means status "pending" so the order is re-planned to a rider.
