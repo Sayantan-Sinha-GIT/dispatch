@@ -7,7 +7,7 @@
 
 type SocialLoginPlugin = {
   initialize(options: { google: { webClientId: string } }): Promise<void>;
-  login(options: { provider: "google"; options: { scopes: string[] } }): Promise<{
+  login(options: { provider: "google"; options: Record<string, never> }): Promise<{
     result?: { idToken?: string | null };
   }>;
 };
@@ -49,7 +49,10 @@ export async function nativeGoogleIdToken(): Promise<string | null> {
   initialized ??= plugin.initialize({ google: { webClientId: GOOGLE_WEB_CLIENT_ID } });
   await initialized;
   try {
-    const res = await plugin.login({ provider: "google", options: { scopes: ["email", "profile"] } });
+    // No `scopes`: the ID token already carries the email and name, and
+    // asking for scopes switches the plugin to an authorisation flow that
+    // needs extra native wiring.
+    const res = await plugin.login({ provider: "google", options: {} });
     return res.result?.idToken ?? null;
   } catch (e) {
     // Dismissing the sheet is a choice, not an error worth a red message.
