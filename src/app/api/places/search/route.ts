@@ -8,22 +8,22 @@ function coord(v: string | null, limit: number): number | null {
 }
 
 /**
- * Landmark and address search for the location picker. Signed-in users only,
- * so the free Ola Maps allowance is spent on customers and riders, not on
- * whoever finds the URL.
+ * Landmark and address search for the location picker. Signed-in customers
+ * and riders search Ola Maps; anyone else (a rider still filling in the
+ * sign-up form) gets OpenStreetMap, so the free Ola allowance can't be
+ * drained by whoever finds the URL.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const q = (request.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 120);
   if (q.length < 2) return NextResponse.json({ results: [] });
 
   const lat = coord(request.nextUrl.searchParams.get("lat"), 90);
   const lng = coord(request.nextUrl.searchParams.get("lng"), 180);
-  const results = await searchPlaces(q, lat !== null && lng !== null ? { lat, lng } : null);
+  const results = await searchPlaces(q, lat !== null && lng !== null ? { lat, lng } : null, !!user);
   return NextResponse.json({ results });
 }

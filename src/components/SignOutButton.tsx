@@ -18,7 +18,20 @@ export function SignOutButton({ role }: { role: "customer" | "rider" | "admin" }
 
   async function signOut() {
     setBusy(true);
-    await createClient().auth.signOut();
+    const supabase = createClient();
+    // A rider who signs out has stopped working: take them offline and hand
+    // their unaccepted offers on, exactly as the switch does. (Closing the app
+    // is not signing out, and leaves them online.) Best effort - a network
+    // hiccup here must never trap anyone in their account.
+    if (role === "rider") {
+      try {
+        await supabase.rpc("set_my_status", { new_status: "inactive" });
+        await fetch("/api/rider/go-offline", { method: "POST", signal: AbortSignal.timeout(5000) });
+      } catch {
+        // signing out anyway
+      }
+    }
+    await supabase.auth.signOut();
     router.replace(`/login?role=${role}`);
     router.refresh();
   }

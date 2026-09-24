@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/LanguageProvider";
 import { createClient } from "@/lib/supabase/client";
+import { DepotField, type Point } from "@/components/rider/DepotField";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { EyeIcon, EyeOffIcon } from "@/components/Icons";
 import { VerifyCodeForm } from "@/components/auth/VerifyCodeForm";
@@ -18,10 +19,8 @@ export default function RiderSignupPage() {
     email: "",
     password: "",
     capacity: 10,
-    depotLat: "",
-    depotLng: "",
   });
-  const [locating, setLocating] = useState(false);
+  const [depot, setDepot] = useState<Point | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -30,31 +29,11 @@ export default function RiderSignupPage() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifying, setVerifying] = useState(false);
 
-  function useMyLocation() {
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setForm((f) => ({
-          ...f,
-          depotLat: pos.coords.latitude.toFixed(6),
-          depotLng: pos.coords.longitude.toFixed(6),
-        }));
-        setLocating(false);
-      },
-      (err) => {
-        setError(t("rider.err.geolocation", { message: err.message }));
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!form.depotLat || !form.depotLng) {
+    if (!depot) {
       setError(t("rider.signup.err.noLocation"));
       return;
     }
@@ -75,8 +54,8 @@ export default function RiderSignupPage() {
           name: form.name.trim(),
           role: "rider",
           capacity: form.capacity,
-          depot_lat: parseFloat(form.depotLat),
-          depot_lng: parseFloat(form.depotLng),
+          depot_lat: depot.lat,
+          depot_lng: depot.lng,
         },
       },
     });
@@ -235,33 +214,7 @@ export default function RiderSignupPage() {
                 />
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-text-dim">
-                  {t("rider.signup.depot")}
-                </label>
-                <button
-                  type="button"
-                  onClick={useMyLocation}
-                  disabled={locating}
-                  className="mb-2 w-full rounded-lg border border-zest/40 bg-zest/10 py-2 text-sm font-medium text-zest transition-colors hover:bg-zest/20 disabled:opacity-50"
-                >
-                  {locating ? t("common.locating") : t("common.useMyLocation")}
-                </button>
-                <div className="flex gap-2">
-                  <input
-                    placeholder={t("common.ph.lat")}
-                    value={form.depotLat}
-                    onChange={(e) => setForm((f) => ({ ...f, depotLat: e.target.value }))}
-                    className="w-full rounded-lg border border-border/50 bg-surface-raised px-3 py-2 text-sm outline-none focus:border-zest"
-                  />
-                  <input
-                    placeholder={t("common.ph.lng")}
-                    value={form.depotLng}
-                    onChange={(e) => setForm((f) => ({ ...f, depotLng: e.target.value }))}
-                    className="w-full rounded-lg border border-border/50 bg-surface-raised px-3 py-2 text-sm outline-none focus:border-zest"
-                  />
-                </div>
-              </div>
+              <DepotField value={depot} onChange={setDepot} />
 
               <p className="text-[11px] text-text-dim">{t("login.verifyNotice")}</p>
 

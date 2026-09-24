@@ -116,8 +116,9 @@ async function nominatimSearch(q: string, near: Point | null): Promise<PlaceSugg
   });
 }
 
-export async function searchPlaces(q: string, near: Point | null): Promise<PlaceSuggestion[]> {
-  const key = olaKey();
+/** `useOla: false` keeps a request on the free OpenStreetMap service. */
+export async function searchPlaces(q: string, near: Point | null, useOla = true): Promise<PlaceSuggestion[]> {
+  const key = useOla ? olaKey() : undefined;
   if (key) {
     try {
       const results = await olaSearch(q, near, key);
@@ -170,8 +171,8 @@ async function nominatimReverse(p: Point): Promise<PlaceAddress | null> {
   };
 }
 
-export async function reverseGeocode(p: Point): Promise<PlaceAddress | null> {
-  const key = olaKey();
+export async function reverseGeocode(p: Point, useOla = true): Promise<PlaceAddress | null> {
+  const key = useOla ? olaKey() : undefined;
   if (key) {
     try {
       const result = await olaReverse(p, key);

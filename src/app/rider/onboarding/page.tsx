@@ -6,14 +6,13 @@ import { motion } from "framer-motion";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { createClient } from "@/lib/supabase/client";
+import { DepotField, type Point } from "@/components/rider/DepotField";
 
 export default function RiderOnboardingPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const [capacity, setCapacity] = useState(10);
-  const [depotLat, setDepotLat] = useState("");
-  const [depotLng, setDepotLng] = useState("");
-  const [locating, setLocating] = useState(false);
+  const [depot, setDepot] = useState<Point | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,26 +26,9 @@ export default function RiderOnboardingPage() {
     });
   }, [router]);
 
-  function useMyLocation() {
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setDepotLat(pos.coords.latitude.toFixed(6));
-        setDepotLng(pos.coords.longitude.toFixed(6));
-        setLocating(false);
-      },
-      (err) => {
-        setError(t("rider.err.geolocation", { message: err.message }));
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!depotLat || !depotLng) {
+    if (!depot) {
       setError(t("rider.onboarding.err.noLocation"));
       return;
     }
@@ -55,7 +37,7 @@ export default function RiderOnboardingPage() {
     const res = await fetch("/api/rider/onboarding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ capacity, depotLat: parseFloat(depotLat), depotLng: parseFloat(depotLng) }),
+      body: JSON.stringify({ capacity, depotLat: depot.lat, depotLng: depot.lng }),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -88,33 +70,7 @@ export default function RiderOnboardingPage() {
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-text-dim">
-              {t("rider.signup.depot")}
-            </label>
-            <button
-              type="button"
-              onClick={useMyLocation}
-              disabled={locating}
-              className="mb-2 w-full rounded-lg border border-zest/40 bg-zest/10 py-2 text-sm font-medium text-zest transition-colors hover:bg-zest/20 disabled:opacity-50"
-            >
-              {locating ? t("common.locating") : t("common.useMyLocation")}
-            </button>
-            <div className="flex gap-2">
-              <input
-                placeholder={t("common.ph.lat")}
-                value={depotLat}
-                onChange={(e) => setDepotLat(e.target.value)}
-                className="w-full rounded-lg border border-border/50 bg-surface-raised px-3 py-2 text-sm outline-none focus:border-zest"
-              />
-              <input
-                placeholder={t("common.ph.lng")}
-                value={depotLng}
-                onChange={(e) => setDepotLng(e.target.value)}
-                className="w-full rounded-lg border border-border/50 bg-surface-raised px-3 py-2 text-sm outline-none focus:border-zest"
-              />
-            </div>
-          </div>
+          <DepotField value={depot} onChange={setDepot} />
 
           {error && (
             <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
