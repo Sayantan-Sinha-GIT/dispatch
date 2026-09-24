@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dispatch
 
-## Getting Started
+A hyperlocal delivery platform in the mould of Blinkit and Zepto: a customer shop, a rider
+app and an admin console, driven by a hand-written route optimiser that makes every
+assignment automatically.
 
-First, run the development server:
+**Live:** https://dispatch-delivery.vercel.app · Android app built from [`android-app/`](android-app/)
+
+## What it does
+
+| Portal | Who | Highlights |
+|---|---|---|
+| **Shop** (`/shop`) | Customers | Catalogue with live stock, cart, map pin with Indian landmark search, live order tracking, 3-minute free cancellation, delivery code, support |
+| **Rider** (`/rider`) | Riders | Go online, full-screen offers (payout + distance), accept/decline, optimised multi-stop route, Google Maps navigation, background GPS in the app |
+| **Console** (`/admin`) | Admin | Live map and order pipeline, plain-English command console (Gemini turns words into validated actions), products and stock, users, support |
+
+- **Dispatch engine:** nearest-neighbour + 2-opt vehicle routing over every pending order and every rider with capacity, a 20 km service radius, 5-minute offers that move on when missed, and penalties for repeated misses.
+- **Correct under load:** stock, capacity, cancellation windows and payouts are enforced in Postgres (row-locked functions and triggers), so ten customers racing for the last four items get exactly four orders.
+- English and Hindi throughout, light and dark themes, a Data Saver mode for slow networks, and push notifications.
+
+## Stack
+
+Next.js 16 (App Router, TypeScript) · React 19 · Tailwind CSS 4 · Supabase (Postgres, Auth, Realtime, Storage) · Leaflet + OpenStreetMap · Ola Maps · Google Gemini · Firebase Cloud Messaging · Capacitor 8 (Android) · Vercel · Vitest
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY`. Optional: `GEMINI_API_KEY` (admin console), `OLA_MAPS_API_KEY`
+(landmark search), `FIREBASE_SERVICE_ACCOUNT` and `PUSH_WEBHOOK_SECRET` (push).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test        # unit tests (routing solver, pricing, i18n)
+npm run lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Documentation
 
-## Learn More
+[`PRD.md`](PRD.md) describes the product, data model, database invariants, dispatch engine,
+deployment and testing in detail.
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE) © 2026 Sayantan Sinha
