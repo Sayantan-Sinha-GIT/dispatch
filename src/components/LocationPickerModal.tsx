@@ -24,43 +24,51 @@ export type AddressGuess = {
   houseNo?: string;
   street?: string;
   locality?: string;
+  /** Set when the pin came from a searched place, e.g. "Annapurna Builders". */
+  landmark?: string;
   displayName: string;
 };
 
-type Suggestion = { label: string; lat: number; lng: number };
+type Suggestion = { title: string; subtitle: string; lat: number; lng: number; distanceM?: number };
 
+/*
+ * Both lookups go through the app's own server (src/lib/places.ts), which
+ * searches Ola Maps - it knows Indian shops and landmarks - and falls back to
+ * OpenStreetMap.
+ */
 async function reverseGeocode(lat: number, lng: number): Promise<AddressGuess | null> {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
-    );
+    const res = await fetch(`/api/places/reverse?lat=${lat}&lng=${lng}`);
     if (!res.ok) return null;
-    const json = await res.json();
-    const a = json.address ?? {};
-    return {
-      houseNo: a.house_number,
-      street: a.road,
-      locality: a.suburb || a.neighbourhood || a.city_district || a.village || a.town || a.city,
-      displayName: json.display_name ?? "",
-    };
+    const json = (await res.json()) as { address: AddressGuess | null };
+    return json.address;
   } catch {
     return null;
   }
 }
 
-async function searchPlaces(q: string): Promise<Suggestion[]> {
+async function searchPlaces(q: string, near: { lat: number; lng: number }): Promise<Suggestion[]> {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&limit=5`);
+    const params = new URLSearchParams({ q, lat: String(near.lat), lng: String(near.lng) });
+    const res = await fetch(`/api/places/search?${params}`);
     if (!res.ok) return [];
-    const json = await res.json();
-    return (json as { display_name: string; lat: string; lon: string }[]).map((r) => ({
-      label: r.display_name,
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-    }));
+    const json = (await res.json()) as { results: Suggestion[] };
+    return json.results;
   } catch {
     return [];
   }
+}
+
+function formatDistance(m: number | undefined): string | null {
+  if (m === undefined) return null;
+  return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
+}
+
+/** Roughly metres between two nearby points; plenty for "is this still the picked place". */
+function nearM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const dLat = (a.lat - b.lat) * 111_320;
+  const dLng = (a.lng - b.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
 }
 
 export function LocationPickerModal({
@@ -82,6 +90,11 @@ export function LocationPickerModal({
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
+  const [noResults, setNoResults] = useState(false);
+  /** The searched place the pin was sent to, until the map is dragged off it. */
+  const pickedRef = useRef<Suggestion | null>(null);
+  const centerRef = useRef({ lat: initialLat, lng: initialLng });
+  const searchSeqRef = useRef(0);
   const [addressGuess, setAddressGuess] = useState<AddressGuess | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,7 +109,8 @@ export function LocationPickerModal({
    * the location the map opened at — a customer who searched for a Kolkata
    * street could place an order against the previous coordinates entirely.
    */
-  function moveTo(lat: number, lng: number) {
+  function moveTo(lat: number, lng: number, picked: Suggestion | null = null) {
+    pickedRef.current = picked;
     // The token only has to differ from the last one to re-trigger the fly.
     flyTokenRef.current += 1;
     setFlyTo({ lat, lng, token: flyTokenRef.current });
@@ -121,26 +135,56 @@ export function LocationPickerModal({
 
   function handleQueryChange(value: string) {
     setQuery(value);
+    setNoResults(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.trim().length < 3) {
       setSuggestions([]);
+      setSearching(false);
       return;
     }
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
-      const results = await searchPlaces(value);
+      // Answers can come back out of order; only the latest query may land.
+      const seq = ++searchSeqRef.current;
+      const results = await searchPlaces(value.trim(), centerRef.current);
+      if (seq !== searchSeqRef.current) return;
       setSuggestions(results);
+      setNoResults(results.length === 0);
       setSearching(false);
-    }, 400);
+    }, 350);
+  }
+
+  function pickSuggestion(s: Suggestion) {
+    moveTo(s.lat, s.lng, s);
+    setQuery(s.title);
+    setSuggestions([]);
+    setNoResults(false);
+    // Show the place's own name straight away; the street details follow.
+    setAddressGuess({ landmark: s.title, displayName: [s.title, s.subtitle].filter(Boolean).join(", ") });
   }
 
   function handleCenterChange(lat: number, lng: number) {
     setCenter({ lat, lng });
+    centerRef.current = { lat, lng };
+    const picked = pickedRef.current;
+    const onPicked = !!picked && nearM(picked, { lat, lng }) < 40;
+    if (!onPicked) pickedRef.current = null;
     if (geocodeDebounceRef.current) clearTimeout(geocodeDebounceRef.current);
-    setGeocoding(true);
+    if (!onPicked) setGeocoding(true);
     geocodeDebounceRef.current = setTimeout(async () => {
       const guess = await reverseGeocode(lat, lng);
-      setAddressGuess(guess);
+      const still = pickedRef.current;
+      // Still on the searched place: keep its name as the headline and as the
+      // landmark, and take only the street details from the lookup.
+      setAddressGuess(
+        still
+          ? {
+              ...guess,
+              landmark: still.title,
+              displayName: [still.title, still.subtitle].filter(Boolean).join(", "),
+            }
+          : guess,
+      );
       setGeocoding(false);
     }, 600);
   }
@@ -191,6 +235,10 @@ export function LocationPickerModal({
               <input
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && suggestions[0]) pickSuggestion(suggestions[0]);
+                }}
+                enterKeyHint="search"
                 placeholder={t("picker.searchPlaceholder")}
                 className="w-full rounded-full card-soft border border-transparent bg-surface/95 px-4 py-3 text-sm shadow-lg outline-none backdrop-blur focus:border-brand"
               />
@@ -208,19 +256,39 @@ export function LocationPickerModal({
                   >
                     {suggestions.map((s, i) => (
                       <button
-                        key={i}
+                        key={`${s.lat},${s.lng},${i}`}
                         type="button"
-                        onClick={() => {
-                          moveTo(s.lat, s.lng);
-                          setQuery(s.label);
-                          setSuggestions([]);
-                        }}
-                        className="block w-full border-b border-border px-4 py-2.5 text-left text-xs text-text-dim last:border-0 hover:bg-surface-raised hover:text-text"
+                        onClick={() => pickSuggestion(s)}
+                        className="flex w-full items-center gap-3 border-b border-border/60 px-4 py-3 text-left last:border-0 hover:bg-surface-raised"
                       >
-                        {s.label}
+                        <span className="flex w-10 shrink-0 flex-col items-center gap-0.5">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised text-text-dim">
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+                              <path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+                            </svg>
+                          </span>
+                          {formatDistance(s.distanceM) && (
+                            <span className="whitespace-nowrap text-[10px] text-text-dim">{formatDistance(s.distanceM)}</span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-text">{s.title}</span>
+                          {s.subtitle && <span className="block truncate text-xs text-text-dim">{s.subtitle}</span>}
+                        </span>
                       </button>
                     ))}
                   </motion.div>
+                )}
+                {noResults && !searching && query.trim().length >= 3 && (
+                  <motion.p
+                    key="picker-empty"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-x-0 top-full mt-2 rounded-2xl card-soft bg-surface px-4 py-3 text-xs text-text-dim shadow-2xl"
+                  >
+                    {t("picker.noResults")}
+                  </motion.p>
                 )}
               </AnimatePresence>
             </div>

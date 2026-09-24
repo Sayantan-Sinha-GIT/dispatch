@@ -314,6 +314,7 @@ export default function ShopCartPage() {
                 if (!houseNo && guess.houseNo) setHouseNo(guess.houseNo);
                 if (!street && guess.street) setStreet(guess.street);
                 if (!locality && guess.locality) setLocality(guess.locality);
+                if (!landmark && guess.landmark) setLandmark(guess.landmark);
               }
               setPickerOpen(false);
             }}
