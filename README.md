@@ -38,6 +38,13 @@ npm test        # unit tests (routing solver, pricing, i18n)
 npm run lint
 ```
 
+## How it was built
+
+I built Dispatch with **Claude Code**, Anthropic's AI coding agent, as my pair programmer. I defined the
+product (the three portals, the delivery rules, the look and feel), set the constraints (free tiers, a
+real Android app, correctness under concurrent orders) and directed every iteration. Claude Code wrote,
+tested and deployed the code. [`PRD.md`](PRD.md) records the decisions and why they were made.
+
 ## Documentation
 
 [`PRD.md`](PRD.md) describes the product, data model, database invariants, dispatch engine,
