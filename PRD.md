@@ -457,6 +457,8 @@ rider accepts in the UI and gets Navigate links, a customer's tracking page.
   cannot match to an account with deploy permission, and it fails as `BLOCKED` rather
   than as a build error — including CLI deploys, which attach the same git metadata.
   This repo's author is pinned to `322015364+Sayantan-Sinha-GIT@users.noreply.github.com`.
+- **Keep-alive.** Supabase pauses free projects after about a week without database activity,
+  so a Vercel Cron job calls `/api/keep-alive` once a day (a head-only count on `products`).
 - **Supabase Auth → URL Configuration**: Site URL is `https://dispatch-delivery.vercel.app`. It must list the production origin (both the new and the old address) and
   `http://localhost:3000/**` under *Redirect URLs*, with the `/**` wildcard.
 - **Schema-change checklist** (learned the hard way — these fail *silently* otherwise):
